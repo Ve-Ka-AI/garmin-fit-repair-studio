@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Garmin FIT Repair Studio</title>
-  <meta name="description" content="Pokročilý klientský nástroj pro grafickou opravu a úpravu .FIT souborů Garmin (odstraňování GPS klubek a doplňování chybějících tras).">
+  <meta name="description" content="Pokročilý klientský nástroj pro grafickou opravu a úpravu .FIT souborů Garmin (odstraňování GPS klubek a doplňování chybějících tras z DEM databází).">
 
   <!-- Google Fonts: Outfit & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -168,12 +168,12 @@
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
     .btn {
-      padding: 8px 16px;
-      font-size: 0.85rem;
+      padding: 8px 14px;
+      font-size: 0.82rem;
       font-weight: 600;
       border-radius: var(--radius-sm);
       border: 1px solid var(--card-border);
@@ -252,15 +252,15 @@
 
     /* Left Sidebar Panel */
     .sidebar {
-      width: 390px;
+      width: 410px;
       background: var(--card-bg);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border-right: 1px solid var(--card-border);
       display: flex;
       flex-direction: column;
-      gap: 1rem;
-      padding: 1.25rem;
+      gap: 0.9rem;
+      padding: 1.1rem;
       overflow-y: auto;
       flex-shrink: 0;
       z-index: 500;
@@ -279,14 +279,14 @@
       background: rgba(15, 23, 42, 0.6);
       border: 1px solid var(--card-border);
       border-radius: var(--radius);
-      padding: 1.1rem;
+      padding: 1rem;
       display: flex;
       flex-direction: column;
-      gap: 0.85rem;
+      gap: 0.75rem;
     }
 
     .card-title {
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       font-weight: 700;
       display: flex;
       align-items: center;
@@ -298,11 +298,11 @@
     .control-group {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 4px;
     }
 
     .control-label {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-weight: 600;
       color: var(--text-muted);
       display: flex;
@@ -329,37 +329,88 @@
     .stat-box {
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(255, 255, 255, 0.05);
-      padding: 10px;
+      padding: 8px 10px;
       border-radius: var(--radius-sm);
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 2px;
     }
 
     .stat-label {
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
 
     .stat-val {
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 700;
       font-family: 'Outfit', sans-serif;
       color: #fff;
     }
 
-    .stat-val.highlight-rose { color: var(--accent-rose); }
-    .stat-val.highlight-green { color: var(--accent-green); }
-    .stat-val.highlight-amber { color: var(--accent-amber); }
+    /* Batch Directory Scanned Activities Queue */
+    .batch-queue {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 180px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .batch-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .batch-item:hover {
+      background: rgba(56, 189, 248, 0.1);
+      border-color: var(--primary);
+    }
+
+    .batch-item.active {
+      border-color: var(--primary);
+      background: rgba(56, 189, 248, 0.18);
+    }
+
+    .batch-name {
+      font-size: 0.8rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
+    }
+
+    .badge-flag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .badge-tangle { background: rgba(244, 63, 94, 0.2); color: var(--accent-rose); border: 1px solid rgba(244, 63, 94, 0.3); }
+    .badge-gap { background: rgba(245, 158, 11, 0.2); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-clean { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); }
 
     /* Items List (Tangles / Gaps) */
     .item-list {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      max-height: 280px;
+      max-height: 220px;
       overflow-y: auto;
     }
 
@@ -424,6 +475,19 @@
       color: var(--accent-rose);
     }
 
+    /* Dem Elevation Status Box */
+    .dem-status-box {
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      font-size: 0.78rem;
+      color: #bae6fd;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     /* Right Main Map & Chart Area */
     .main-view {
       flex: 1;
@@ -440,9 +504,9 @@
       z-index: 1;
     }
 
-    /* Bottom Chart Drawer */
+    /* Bottom Telemetry Chart Drawer */
     .chart-drawer {
-      height: 200px;
+      height: 230px;
       background: var(--card-bg);
       backdrop-filter: blur(16px);
       border-top: 1px solid var(--card-border);
@@ -462,6 +526,29 @@
       font-size: 0.8rem;
       color: var(--text-muted);
       font-weight: 600;
+    }
+
+    .chart-tabs {
+      display: flex;
+      gap: 6px;
+    }
+
+    .chart-tab-btn {
+      padding: 3px 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid var(--card-border);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .chart-tab-btn.active {
+      background: var(--primary);
+      color: #070a12;
+      border-color: var(--primary);
+      font-weight: 700;
     }
 
     .chart-container {
@@ -490,7 +577,7 @@
     }
 
     .dropzone-box {
-      width: 480px;
+      width: 520px;
       padding: 3rem 2rem;
       border: 2px dashed rgba(56, 189, 248, 0.4);
       border-radius: 24px;
@@ -662,6 +749,7 @@
 
     /* Hidden input */
     #fileInput { display: none; }
+    #folderInput { display: none; }
   </style>
 </head>
 <body>
@@ -688,6 +776,9 @@
 
     <!-- Header Actions & Language Switcher -->
     <div class="header-actions">
+      <button type="button" class="btn" onclick="openFolderSelector()" title="Proskenovat celou složku se soubory FIT">
+        <i class="fa-solid fa-folder-tree"></i> <span data-i18n="btnLoadFolder">Načíst složku</span>
+      </button>
       <button type="button" class="btn" onclick="openFileSelector()">
         <i class="fa-solid fa-folder-open"></i> <span data-i18n="btnLoadFit">Načíst FIT</span>
       </button>
@@ -710,6 +801,17 @@
     
     <!-- Left Controls Sidebar -->
     <aside class="sidebar">
+
+      <!-- Batch Directory Scanned Activities Card -->
+      <div class="card" id="cardBatchQueue" style="display:none;">
+        <div class="card-title">
+          <span><i class="fa-solid fa-folder-tree" style="color:var(--primary);"></i> <span data-i18n="batchTitle">Proskenovaná složka</span> (<span id="batchCount">0</span>)</span>
+          <span style="font-size:0.72rem; color:var(--text-muted);" id="batchSubTitle">Vyberte soubor k opravě</span>
+        </div>
+        <div class="batch-queue" id="batchQueueList">
+          <!-- Populated dynamically when scanning folder -->
+        </div>
+      </div>
       
       <!-- Activity Summary Header Card -->
       <div class="card">
@@ -769,13 +871,13 @@
         </div>
 
         <!-- Detected Tangles List -->
-        <div class="card-title" style="margin-top:6px;">
+        <div class="card-title" style="margin-top:4px;">
           <span><i class="fa-solid fa-bullseye" style="color:var(--accent-rose);"></i> <span data-i18n="foundTangles">Nalezená klubka</span> (<span id="tangleCount">0</span>)</span>
         </div>
         <div class="item-list" id="tanglesList">
           <!-- Populated by JS -->
           <div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding:12px;" data-i18n="loadFitFirst">
-            Načtěte .FIT soubor pro detekci klubek.
+            Načtěte .FIT soubor nebo složku pro detekci klubek.
           </div>
         </div>
       </div>
@@ -787,14 +889,19 @@
         </div>
 
         <p style="font-size:0.8rem; color:var(--text-muted); line-height:1.4;" data-i18n="mod2Desc">
-          Aplikace automaticky zjišťuje nepřirozené přímky. Kliknutím na mapu můžete dokreslit chybějící reálnou trasu a dopočítat plynulá data.
+          Aplikace automaticky zjišťuje nepřirozené přímky. Kliknutím na mapu můžete dokreslit chybějící reálnou trasu a načíst reálnou nadmořskou výšku z DEM databáze kalibrovanou na barometr.
         </p>
 
         <button type="button" class="btn btn-primary" id="btnToggleDrawing" onclick="toggleDrawingTool()" style="width:100%; justify-content:center;">
           <i class="fa-solid fa-pencil"></i> <span id="lblDrawingBtn" data-i18n="startDrawing">Zapnout kreslicí nástroj</span>
         </button>
 
-        <div class="card-title" style="margin-top:8px;">
+        <div class="dem-status-box" id="demStatusBox" style="display:none;">
+          <i class="fa-solid fa-mountain" style="color:var(--primary);"></i>
+          <span id="demStatusText">DEM databáze nadmořské výšky s kalibrací na barometr připravena.</span>
+        </div>
+
+        <div class="card-title" style="margin-top:4px;">
           <span><i class="fa-solid fa-vector-square" style="color:var(--accent-amber);"></i> <span data-i18n="detectedGaps">Detekované mezery</span> (<span id="gapCount">0</span>)</span>
         </div>
         <div class="item-list" id="gapsList">
@@ -811,11 +918,19 @@
     <main class="main-view">
       <div id="map"></div>
 
-      <!-- Bottom Chart Drawer -->
+      <!-- Bottom Synchronized Telemetry Chart Drawer -->
       <div class="chart-drawer">
         <div class="chart-header">
-          <span><i class="fa-solid fa-chart-area" style="color:var(--primary);"></i> <span data-i18n="chartTitle">Výškový profil a rychlost</span></span>
-          <span id="chartCursorInfo">-- m | -- km/h</span>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span><i class="fa-solid fa-chart-area" style="color:var(--primary);"></i> <span data-i18n="chartTitle">Telemetrie a grafy</span></span>
+            <div class="chart-tabs">
+              <button type="button" class="chart-tab-btn active" id="cTabAlt" onclick="switchChartMode('alt')">⛰️ Výška</button>
+              <button type="button" class="chart-tab-btn" id="cTabHr" onclick="switchChartMode('hr')">💓 Tep</button>
+              <button type="button" class="chart-tab-btn" id="cTabSpeed" onclick="switchChartMode('speed')">⚡ Rychlost</button>
+              <button type="button" class="chart-tab-btn" id="cTabCad" onclick="switchChartMode('cad')">🚴 Kadence</button>
+            </div>
+          </div>
+          <span id="chartCursorInfo">-- m | -- km/h | -- bpm</span>
         </div>
         <div class="chart-container">
           <canvas id="elevationChart"></canvas>
@@ -830,11 +945,14 @@
     <div class="dropzone-box" id="dropzoneBox">
       <div class="dropzone-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
       <div>
-        <h2 style="font-size:1.4rem; font-weight:800; color:#fff;" data-i18n="dropTitle">Přetáhněte sem Garmin .FIT soubor</h2>
-        <p style="font-size:0.88rem; color:var(--text-muted); margin-top:4px;" data-i18n="dropSubtitle">Aplikace opaví pokažená klubka a dopočítá chybějící trasy přímo v prohlížeči.</p>
+        <h2 style="font-size:1.4rem; font-weight:800; color:#fff;" data-i18n="dropTitle">Přetáhněte sem Garmin .FIT soubor nebo složku</h2>
+        <p style="font-size:0.88rem; color:var(--text-muted); margin-top:4px;" data-i18n="dropSubtitle">Aplikace proskenuje všechny aktivity, odhalí klubka i zapomenuté restarty a opraví je přímo v prohlížeči.</p>
       </div>
       <div style="display:flex; gap:12px; margin-top:8px;">
-        <button type="button" class="btn btn-primary" onclick="openFileSelector()">
+        <button type="button" class="btn btn-primary" onclick="openFolderSelector()">
+          <i class="fa-solid fa-folder-tree"></i> <span data-i18n="btnLoadFolder">Načíst složku .FIT</span>
+        </button>
+        <button type="button" class="btn" onclick="openFileSelector()">
           <i class="fa-solid fa-folder-open"></i> <span data-i18n="btnSelectFile">Vybrat FIT soubor</span>
         </button>
         <button type="button" class="btn" onclick="loadDemoFile()">
@@ -888,6 +1006,7 @@
   </div>
 
   <input type="file" id="fileInput" accept=".fit" onchange="handleFileSelect(event)">
+  <input type="file" id="folderInput" webkitdirectory directory multiple onchange="handleFolderSelect(event)">
 
   <!-- JavaScript Code Base -->
   <script>
@@ -898,6 +1017,7 @@
         mod1Title: "Odstraňovač klubka",
         mod2Title: "Doplňovač trasy",
         btnLoadFit: "Načíst FIT",
+        btnLoadFolder: "Načíst složku",
         btnDemo: "Demo",
         btnExport: "Exportovat FIT",
         noFileLoaded: "Žádná aktivita načtena",
@@ -905,20 +1025,21 @@
         statTime: "Čas v pohybu",
         statAvgSpeed: "Prům. Rychlost",
         statAvgHr: "Prům. Tep",
+        batchTitle: "Proskenovaná složka",
         tangleSensitivity: "Citlivost detekce klubka",
         lblRadius: "Poloměr stání",
         lblMinTime: "Minimální čas stání",
         liveSavingsTitle: "Živý odhad úspory",
         foundTangles: "Nalezená klubka",
         loadFitFirst: "Načtěte .FIT soubor pro detekci klubek.",
-        mod2Desc: "Aplikace automaticky zjišťuje nepřirozené přímky. Kliknutím na mapu můžete dokreslit chybějící reálnou trasu a dopočítat plynulá data.",
+        mod2Desc: "Aplikace automaticky zjišťuje nepřirozené přímky. Kliknutím na mapu můžete dokreslit chybějící reálnou trasu a načíst reálnou nadmořskou výšku z DEM databáze kalibrovanou na barometr.",
         startDrawing: "Zapnout kreslicí nástroj",
         stopDrawing: "Ukončit kreslení",
         detectedGaps: "Detekované mezery",
         noGapsFound: "Žádné přímkové mezery nedetekovány.",
-        chartTitle: "Výškový profil a rychlost",
-        dropTitle: "Přetáhněte sem Garmin .FIT soubor",
-        dropSubtitle: "Aplikace opraví pokažená klubka a dopočítá chybějící trasy přímo v prohlížeči.",
+        chartTitle: "Telemetrie a grafy",
+        dropTitle: "Přetáhněte sem Garmin .FIT soubor nebo složku",
+        dropSubtitle: "Aplikace proskenuje všechny aktivity, odhalí klubka i zapomenuté restarty a opraví je přímo v prohlížeči.",
         btnSelectFile: "Vybrat FIT soubor",
         exportModalTitle: "Export opraveného FIT souboru",
         dupBypassNoticeTitle: "Bypass duplicity aktivní:",
@@ -935,6 +1056,7 @@
         mod1Title: "GPS Drift Cleaner",
         mod2Title: "Missing Route Interpolator",
         btnLoadFit: "Load FIT",
+        btnLoadFolder: "Load Folder",
         btnDemo: "Demo",
         btnExport: "Export FIT",
         noFileLoaded: "No activity loaded",
@@ -942,20 +1064,21 @@
         statTime: "Moving Time",
         statAvgSpeed: "Avg Speed",
         statAvgHr: "Avg HR",
+        batchTitle: "Scanned Directory",
         tangleSensitivity: "Tangle Detection Sensitivity",
         lblRadius: "Stationary Radius",
         lblMinTime: "Min Stationary Time",
         liveSavingsTitle: "Live Estimated Savings",
         foundTangles: "Detected Tangles",
         loadFitFirst: "Load a .FIT file to detect tangles.",
-        mod2Desc: "The app automatically flags unnatural straight lines. Click on the map to manually draw missing routes and recalculate smooth telemetry.",
+        mod2Desc: "The app automatically flags unnatural straight lines. Click on the map to manually draw missing routes and fetch real DEM terrain elevation calibrated to your barometric altimeter.",
         startDrawing: "Enable Drawing Tool",
         stopDrawing: "Finish Drawing",
         detectedGaps: "Detected Gaps",
         noGapsFound: "No straight line gaps detected.",
-        chartTitle: "Elevation Profile & Speed",
-        dropTitle: "Drag & Drop Garmin .FIT file here",
-        dropSubtitle: "Repair stationary drift tangles and interpolate missing routes completely inside your browser.",
+        chartTitle: "Telemetry & Charts",
+        dropTitle: "Drag & Drop Garmin .FIT file or folder here",
+        dropSubtitle: "The app scans all activities, flags drift tangles or forgotten unpauses, and repairs telemetry directly inside your browser.",
         btnSelectFile: "Select FIT File",
         exportModalTitle: "Export Repaired FIT File",
         dupBypassNoticeTitle: "Duplicity Bypass Active:",
@@ -989,21 +1112,23 @@
     // --- State Variables ---
     let activeModule = 1; // 1 = Drift Cleaner, 2 = Missing Route Interpolator
     let fitArrayBuffer = null;
-    let rawFitData = null;
     let records = []; // parsed trackpoint records [{timestamp, lat, lng, alt, hr, cadence, speed, dist, ...}]
     let fileIdHeader = {};
-    let sessionData = {};
+
+    let scannedBatchFiles = []; // [{filename, buffer, records, tanglesCount, gapsCount}]
+    let activeBatchIndex = -1;
 
     let detectedTangles = []; // [{id, startIdx, endIdx, active, markerA, markerB, circlePoly}]
-    let detectedGaps = []; // [{id, startIdx, endIdx, drawnPoints:[]}]
+    let detectedGaps = []; // [{id, startIdx, endIdx, drawnWaypoints:[]}]
 
     let map = null;
     let trackPolyline = null;
-    let repairedPolyline = null;
-    let drawingPolyline = null;
+    let mapCursorMarker = null;
     let chart = null;
+    let currentChartMode = 'alt'; // 'alt', 'hr', 'speed', 'cad'
     let isDrawingMode = false;
-    let currentGapDrawing = null;
+    let drawingPolyline = null;
+    let drawnRouteNodes = [];
 
     const GARMIN_EPOCH_OFFSET = 631065600; // seconds between 1970-01-01 and 1989-12-31T00:00:00Z
 
@@ -1039,16 +1164,8 @@
               backgroundColor: 'rgba(56, 189, 248, 0.15)',
               fill: true,
               tension: 0.2,
-              yAxisID: 'y'
-            },
-            {
-              label: 'Rychlost (km/h)',
-              data: [],
-              borderColor: '#f59e0b',
-              borderDash: [4, 4],
-              fill: false,
-              tension: 0.2,
-              yAxisID: 'y1'
+              pointRadius: 0,
+              pointHoverRadius: 6
             }
           ]
         },
@@ -1058,12 +1175,26 @@
           interaction: { mode: 'index', intersect: false },
           plugins: { legend: { display: false } },
           scales: {
-            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', maxTicksLimit: 8 } },
-            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#38bdf8' } },
-            y1: { position: 'right', grid: { display: false }, ticks: { color: '#f59e0b' } }
+            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', maxTicksLimit: 10 } },
+            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#38bdf8' } }
+          },
+          onHover: (e, activeElements) => {
+            if (activeElements && activeElements.length > 0) {
+              const idx = activeElements[0].index;
+              highlightMapCursor(idx);
+            }
           }
         }
       });
+    }
+
+    function switchChartMode(mode) {
+      currentChartMode = mode;
+      document.getElementById('cTabAlt').classList.toggle('active', mode === 'alt');
+      document.getElementById('cTabHr').classList.toggle('active', mode === 'hr');
+      document.getElementById('cTabSpeed').classList.toggle('active', mode === 'speed');
+      document.getElementById('cTabCad').classList.toggle('active', mode === 'cad');
+      renderChartData();
     }
 
     // --- Module Switcher ---
@@ -1078,14 +1209,137 @@
       }
     }
 
-    // --- Drag & Drop & File Loading ---
+    // --- Directory Batch Scanning & File Select ---
     function openFileSelector() {
       document.getElementById('fileInput').click();
+    }
+
+    function openFolderSelector() {
+      if ('showDirectoryPicker' in window) {
+        window.showDirectoryPicker().then(async dirHandle => {
+          scannedBatchFiles = [];
+          for await (const entry of dirHandle.values()) {
+            if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.fit')) {
+              const file = await entry.getFile();
+              const buf = await file.arrayBuffer();
+              parseBatchFileEntry(buf, file.name);
+            }
+          }
+          finishBatchScan();
+        }).catch(err => {
+          if (err.name !== 'AbortError') document.getElementById('folderInput').click();
+        });
+      } else {
+        document.getElementById('folderInput').click();
+      }
+    }
+
+    function handleFolderSelect(evt) {
+      const files = evt.target.files;
+      if (!files || files.length === 0) return;
+      scannedBatchFiles = [];
+
+      let loadedCount = 0;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.name.toLowerCase().endsWith('.fit')) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            parseBatchFileEntry(e.target.result, file.name);
+            loadedCount++;
+            if (loadedCount === files.length) finishBatchScan();
+          };
+          reader.readAsArrayBuffer(file);
+        }
+      }
     }
 
     function handleFileSelect(evt) {
       const file = evt.target.files[0];
       if (file) loadFitFileBuffer(file);
+    }
+
+    function parseBatchFileEntry(buffer, filename) {
+      const parsed = parseNativeFitBinary(buffer);
+      if (parsed && parsed.records && parsed.records.length > 0) {
+        const tCount = quickDetectTanglesCount(parsed.records);
+        const gCount = quickDetectGapsCount(parsed.records);
+
+        scannedBatchFiles.push({
+          filename: filename,
+          buffer: buffer,
+          records: parsed.records,
+          fileIdHeader: parsed.fileIdHeader,
+          tanglesCount: tCount,
+          gapsCount: gCount
+        });
+      }
+    }
+
+    function finishBatchScan() {
+      if (scannedBatchFiles.length === 0) {
+        alert('Ve složce nebyly nalezeny žádné platné soubory .FIT');
+        return;
+      }
+
+      scannedBatchFiles.sort((a, b) => (b.tanglesCount + b.gapsCount) - (a.tanglesCount + a.gapsCount));
+
+      document.getElementById('cardBatchQueue').style.display = 'flex';
+      document.getElementById('batchCount').innerText = scannedBatchFiles.length;
+
+      const container = document.getElementById('batchQueueList');
+      container.innerHTML = '';
+
+      scannedBatchFiles.forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.className = `batch-item ${idx === 0 ? 'active' : ''}`;
+        
+        let badgeHtml = '';
+        if (item.tanglesCount > 0) {
+          badgeHtml += `<span class="badge-flag badge-tangle"><i class="fa-solid fa-scissors"></i> ${item.tanglesCount}</span> `;
+        }
+        if (item.gapsCount > 0) {
+          badgeHtml += `<span class="badge-flag badge-gap"><i class="fa-solid fa-vector-square"></i> ${item.gapsCount}</span>`;
+        }
+        if (item.tanglesCount === 0 && item.gapsCount === 0) {
+          badgeHtml = `<span class="badge-flag badge-clean"><i class="fa-solid fa-check"></i> Bez chyby</span>`;
+        }
+
+        div.innerHTML = `
+          <div class="batch-name" title="${item.filename}">${item.filename}</div>
+          <div>${badgeHtml}</div>
+        `;
+        div.onclick = () => loadBatchActivity(idx);
+        container.appendChild(div);
+      });
+
+      loadBatchActivity(0);
+    }
+
+    function loadBatchActivity(idx) {
+      activeBatchIndex = idx;
+      const item = scannedBatchFiles[idx];
+      if (!item) return;
+
+      document.querySelectorAll('.batch-item').forEach((el, i) => {
+        el.classList.toggle('active', i === idx);
+      });
+
+      fitArrayBuffer = item.buffer;
+      records = item.records;
+      fileIdHeader = item.fileIdHeader;
+
+      document.getElementById('dropzoneOverlay').style.opacity = '0';
+      setTimeout(() => document.getElementById('dropzoneOverlay').style.display = 'none', 300);
+      document.getElementById('btnExportHeader').disabled = false;
+
+      document.getElementById('actName').innerText = item.filename;
+      if (records[0].timestamp) {
+        const dt = new Date((records[0].timestamp + GARMIN_EPOCH_OFFSET) * 1000);
+        document.getElementById('actDate').innerText = dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      }
+
+      processActivityData();
     }
 
     function setupDragAndDrop() {
@@ -1105,9 +1359,11 @@
         e.preventDefault();
         box.classList.remove('dragover');
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-          const file = e.dataTransfer.files[0];
-          if (file.name.toLowerCase().endsWith('.fit')) {
-            loadFitFileBuffer(file);
+          const files = e.dataTransfer.files;
+          if (files.length === 1 && files[0].name.toLowerCase().endsWith('.fit')) {
+            loadFitFileBuffer(files[0]);
+          } else {
+            handleFolderSelect({ target: { files: files } });
           }
         }
       });
@@ -1117,36 +1373,37 @@
       const reader = new FileReader();
       reader.onload = function(e) {
         fitArrayBuffer = e.target.result;
-        parseAndProcessFit(fitArrayBuffer, file.name);
+        const parsed = parseNativeFitBinary(fitArrayBuffer);
+        if (parsed && parsed.records) {
+          records = parsed.records;
+          fileIdHeader = parsed.fileIdHeader;
+          document.getElementById('dropzoneOverlay').style.opacity = '0';
+          setTimeout(() => document.getElementById('dropzoneOverlay').style.display = 'none', 300);
+          document.getElementById('btnExportHeader').disabled = false;
+          document.getElementById('actName').innerText = file.name;
+          processActivityData();
+        }
       };
       reader.readAsArrayBuffer(file);
     }
 
-    // Load Demo File
     function loadDemoFile() {
-      // Create synthesized realistic FIT track with stationary tangle & straight gap
       generateDemoFitTrack();
     }
 
     // --- NATIVE BINARY FIT PARSER ENGINE ---
-    function parseAndProcessFit(buffer, filename) {
+    function parseNativeFitBinary(buffer) {
       try {
         const view = new DataView(buffer);
         const data = new Uint8Array(buffer);
-        if (data.length < 14) return alert('Neplatný FIT soubor (příliš krátký).');
+        if (data.length < 14) return null;
 
         const headerSize = data[0];
-        const isFitMagic = (data[8] === 46 && data[9] === 70 && data[10] === 73 && data[11] === 84); // '.FIT'
-        if (!isFitMagic) {
-          console.warn('FIT Magic missing, attempting fallback parse.');
-        }
-
         const dataSize = view.getUint32(4, true);
         const bodyEnd = Math.min(headerSize + dataSize, data.length);
 
-        records = [];
-        fileIdHeader = { manufacturer: 1, product: 1, timeCreated: Math.round(Date.now()/1000) - GARMIN_EPOCH_OFFSET };
-        sessionData = {};
+        const recs = [];
+        const fHeader = { timeCreated: Math.round(Date.now()/1000) - GARMIN_EPOCH_OFFSET };
         const defs = {};
 
         let idx = headerSize;
@@ -1161,7 +1418,7 @@
 
             if (isDef) {
               if (idx + 5 > bodyEnd) break;
-              idx++; // reserved
+              idx++;
               const arch = data[idx++];
               const isLittle = (arch === 0);
               const globalMsg = view.getUint16(idx, isLittle);
@@ -1193,9 +1450,7 @@
                 idx += field.size;
               }
               if (def.devFields) {
-                for (const df of def.devFields) {
-                  idx += df.size;
-                }
+                for (const df of def.devFields) idx += df.size;
               }
 
               const gNum = def.globalMsg;
@@ -1203,7 +1458,7 @@
                 for (const fn in msgData) {
                   const { raw, size } = msgData[fn];
                   const dv = new DataView(raw.buffer, raw.byteOffset, size);
-                  if (fn == 4 && size === 4) fileIdHeader.timeCreated = dv.getUint32(0, isLittle);
+                  if (fn == 4 && size === 4) fHeader.timeCreated = dv.getUint32(0, isLittle);
                 }
               } else if (gNum === 20) { // record
                 const rec = {};
@@ -1223,33 +1478,16 @@
                   }
                   else if ((fn == 5 || fn == 77) && size === 4) rec.dist = dv.getUint32(0, isLittle) / 100.0;
                 }
-                if (rec.lat && rec.lng) records.push(rec);
+                if (rec.lat && rec.lng) recs.push(rec);
               }
             }
           }
         }
 
-        if (records.length === 0) {
-          alert('V FIT souboru nebyly nalezeny žádné GPS body.');
-          return;
-        }
-
-        // Hide Dropzone
-        document.getElementById('dropzoneOverlay').style.opacity = '0';
-        setTimeout(() => document.getElementById('dropzoneOverlay').style.display = 'none', 300);
-        document.getElementById('btnExportHeader').disabled = false;
-
-        document.getElementById('actName').innerText = filename || 'Garmin Aktivita';
-        if (records[0].timestamp) {
-          const dt = new Date((records[0].timestamp + GARMIN_EPOCH_OFFSET) * 1000);
-          document.getElementById('actDate').innerText = dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-        }
-
-        processActivityData();
-
-      } catch (err) {
-        console.error('Fit Parser Error:', err);
-        alert('Chyba při dekódování FIT souboru: ' + err.message);
+        return { records: recs, fileIdHeader: fHeader };
+      } catch (e) {
+        console.error('Fit Parse error:', e);
+        return null;
       }
     }
 
@@ -1260,7 +1498,6 @@
       let curTime = Math.round(Date.now()/1000) - GARMIN_EPOCH_OFFSET;
       let curDist = 0;
 
-      // Section 1: Normal moving track (100 points)
       for (let i = 0; i < 100; i++) {
         curTime += 2;
         curDist += 5.5;
@@ -1276,29 +1513,27 @@
         });
       }
 
-      // Section 2: Stationary Tangle / Drift (5 min stop with GPS wander)
       const tangleStartIdx = records.length - 1;
       const tCenterLat = records[tangleStartIdx].lat;
       const tCenterLng = records[tangleStartIdx].lng;
 
       for (let i = 0; i < 150; i++) {
-        curTime += 2; // 300 seconds total (5 min)
+        curTime += 2;
         curDist += 0.8;
         const angle = Math.random() * Math.PI * 2;
-        const rad = Math.random() * 0.00018; // ~15-20 meters wander
+        const rad = Math.random() * 0.00018;
         records.push({
           timestamp: curTime,
           lat: tCenterLat + Math.cos(angle) * rad,
           lng: tCenterLng + Math.sin(angle) * rad,
           alt: 252,
-          hr: 95, // resting HR during pause
+          hr: 95,
           cadence: 0,
           speed: 0.5,
           dist: curDist
         });
       }
 
-      // Section 3: Normal track again (80 points)
       const lastRec = records[records.length - 1];
       for (let i = 0; i < 80; i++) {
         curTime += 2;
@@ -1315,7 +1550,6 @@
         });
       }
 
-      // Section 4: Straight Line Gap (Forgotten unpause - 3 min jump over 800m)
       const gapStartRec = records[records.length - 1];
       curTime += 180;
       curDist += 800;
@@ -1330,7 +1564,6 @@
         dist: curDist
       });
 
-      // Hide Dropzone
       document.getElementById('dropzoneOverlay').style.opacity = '0';
       setTimeout(() => document.getElementById('dropzoneOverlay').style.display = 'none', 300);
       document.getElementById('btnExportHeader').disabled = false;
@@ -1345,15 +1578,12 @@
     function processActivityData() {
       if (records.length === 0) return;
 
-      // Render Base Map Track
       renderMapTrack();
       renderChartData();
 
-      // Run Detection Algorithms
       runTangleDetection();
       runGapDetection();
 
-      // Update Summary Stats
       updateActivityStatsUI();
     }
 
@@ -1370,14 +1600,57 @@
       map.fitBounds(trackPolyline.getBounds(), { padding: [40, 40] });
     }
 
+    function highlightMapCursor(idx) {
+      if (!records[idx]) return;
+      const rec = records[idx];
+
+      if (!mapCursorMarker) {
+        mapCursorMarker = L.circleMarker([rec.lat, rec.lng], {
+          radius: 7,
+          color: '#ffffff',
+          fillColor: '#38bdf8',
+          fillOpacity: 1.0,
+          weight: 3
+        }).addTo(map);
+      } else {
+        mapCursorMarker.setLatLng([rec.lat, rec.lng]);
+      }
+
+      document.getElementById('chartCursorInfo').innerText = 
+        `${Math.round(rec.alt || 0)} m | ${(rec.speed || 0).toFixed(1)} km/h | ${rec.hr || '--'} bpm`;
+    }
+
     function renderChartData() {
+      if (records.length === 0) return;
+
       const labels = records.map((r, i) => Math.round(r.dist || i * 10) + ' m');
-      const alts = records.map(r => r.alt || 0);
-      const speeds = records.map(r => r.speed || 0);
+      let chartData = [];
+      let labelText = '';
+      let colorCode = '#38bdf8';
+
+      if (currentChartMode === 'alt') {
+        chartData = records.map(r => r.alt || 0);
+        labelText = 'Výška (m)';
+        colorCode = '#38bdf8';
+      } else if (currentChartMode === 'hr') {
+        chartData = records.map(r => r.hr || 0);
+        labelText = 'Tepová frekvence (bpm)';
+        colorCode = '#f43f5e';
+      } else if (currentChartMode === 'speed') {
+        chartData = records.map(r => r.speed || 0);
+        labelText = 'Rychlost (km/h)';
+        colorCode = '#f59e0b';
+      } else if (currentChartMode === 'cad') {
+        chartData = records.map(r => r.cadence || 0);
+        labelText = 'Kadence (rpm)';
+        colorCode = '#a855f7';
+      }
 
       chart.data.labels = labels;
-      chart.data.datasets[0].data = alts;
-      chart.data.datasets[1].data = speeds;
+      chart.data.datasets[0].label = labelText;
+      chart.data.datasets[0].data = chartData;
+      chart.data.datasets[0].borderColor = colorCode;
+      chart.data.datasets[0].backgroundColor = colorCode + '25';
       chart.update();
     }
 
@@ -1390,8 +1663,39 @@
       runTangleDetection();
     }
 
+    function quickDetectTanglesCount(recs) {
+      let count = 0;
+      let n = recs.length;
+      let i = 0;
+      while (i < n - 1) {
+        let j = i + 1;
+        while (j < n) {
+          const d = calcHaversine(recs[i].lat, recs[i].lng, recs[j].lat, recs[j].lng);
+          if (d > 30.0) break;
+          j++;
+        }
+        const dur = recs[j - 1].timestamp - recs[i].timestamp;
+        if (dur >= 180 && (j - i) > 5) {
+          count++;
+          i = j;
+        } else {
+          i++;
+        }
+      }
+      return count;
+    }
+
+    function quickDetectGapsCount(recs) {
+      let count = 0;
+      for (let i = 0; i < recs.length - 1; i++) {
+        const dt = recs[i + 1].timestamp - recs[i].timestamp;
+        const dd = calcHaversine(recs[i].lat, recs[i].lng, recs[i + 1].lat, recs[i + 1].lng);
+        if (dt >= 120 || dd >= 300) count++;
+      }
+      return count;
+    }
+
     function runTangleDetection() {
-      // Clear old Leaflet layers
       detectedTangles.forEach(t => {
         if (t.circlePoly) map.removeLayer(t.circlePoly);
         if (t.markerA) map.removeLayer(t.markerA);
@@ -1408,8 +1712,6 @@
 
       while (i < n - 1) {
         let j = i + 1;
-        let maxDistInWindow = 0;
-
         while (j < n) {
           const distBetween = calcHaversine(records[i].lat, records[i].lng, records[j].lat, records[j].lng);
           if (distBetween > radiusMeters) break;
@@ -1418,7 +1720,6 @@
 
         const duration = records[j - 1].timestamp - records[i].timestamp;
         if (duration >= minDurationSec && (j - i) > 5) {
-          // Stationary cluster detected!
           detectedTangles.push({
             id: tangleId++,
             startIdx: i,
@@ -1434,7 +1735,6 @@
         }
       }
 
-      // Render Tangles on Map
       renderTanglesOnMap();
       updateTangleListUI();
       updateLiveSavingsUI();
@@ -1445,7 +1745,6 @@
         const startRec = records[t.startIdx];
         const endRec = records[t.endIdx];
 
-        // Draw red tangle zone circle
         const circle = L.circle([startRec.lat, startRec.lng], {
           color: '#f43f5e',
           fillColor: '#f43f5e',
@@ -1454,7 +1753,6 @@
         }).addTo(map);
         t.circlePoly = circle;
 
-        // Custom A Marker (Entry)
         const iconA = L.divIcon({
           className: 'custom-div-icon',
           html: `<div class="marker-badge marker-a">A</div>`,
@@ -1464,7 +1762,6 @@
         const markerA = L.marker([startRec.lat, startRec.lng], { icon: iconA, draggable: true }).addTo(map);
         markerA.on('drag', (e) => onMarkerDrag(t, 'A', e.target.getLatLng()));
 
-        // Custom B Marker (Exit)
         const iconB = L.divIcon({
           className: 'custom-div-icon',
           html: `<div class="marker-badge marker-b">B</div>`,
@@ -1479,9 +1776,7 @@
       });
     }
 
-    // Handle interactive marker dragging A / B
     function onMarkerDrag(tangle, markerType, latLng) {
-      // Find closest track record to dropped latLng
       let minD = Infinity;
       let closestIdx = tangle.startIdx;
 
@@ -1558,7 +1853,6 @@
       map.setView([startRec.lat, startRec.lng], 17);
     }
 
-    // Live Savings Indicator Calculator
     function updateLiveSavingsUI() {
       let totalTimeSec = 0;
       let totalDistM = 0;
@@ -1574,7 +1868,7 @@
       document.getElementById('liveSavingsText').innerText = text;
     }
 
-    // --- MODULE 2: MISSING ROUTE INTERPOLATOR ---
+    // --- MODULE 2: MISSING ROUTE INTERPOLATOR & DEM TERRAIN LOOKUP ---
     function runGapDetection() {
       detectedGaps = [];
       let gapId = 1;
@@ -1583,14 +1877,14 @@
         const dt = records[i + 1].timestamp - records[i].timestamp;
         const dd = calcHaversine(records[i].lat, records[i].lng, records[i + 1].lat, records[i + 1].lng);
 
-        if (dt >= 120 || dd >= 300) { // Gap > 2 min or straight line > 300m
+        if (dt >= 120 || dd >= 300) {
           detectedGaps.push({
             id: gapId++,
             startIdx: i,
             endIdx: i + 1,
             timeGapSec: dt,
             distGapM: dd,
-            drawnPoints: []
+            drawnWaypoints: []
           });
         }
       }
@@ -1635,23 +1929,28 @@
       isDrawingMode = !isDrawingMode;
       const btn = document.getElementById('btnToggleDrawing');
       const lbl = document.getElementById('lblDrawingBtn');
+      const statusBox = document.getElementById('demStatusBox');
 
       if (isDrawingMode) {
         btn.classList.remove('btn-primary');
         btn.style.background = 'var(--accent-rose)';
         lbl.innerText = i18nData[currentLang].stopDrawing || 'Ukončit kreslení';
+        statusBox.style.display = 'flex';
         map.getContainer().style.cursor = 'crosshair';
         map.on('click', onMapClickDraw);
       } else {
         btn.classList.add('btn-primary');
         btn.style.background = '';
         lbl.innerText = i18nData[currentLang].startDrawing || 'Zapnout kreslicí nástroj';
+        statusBox.style.display = 'none';
         map.getContainer().style.cursor = '';
         map.off('click', onMapClickDraw);
       }
     }
 
     function onMapClickDraw(e) {
+      drawnRouteNodes.push(e.latlng);
+
       if (!drawingPolyline) {
         drawingPolyline = L.polyline([e.latlng], {
           color: '#f59e0b',
@@ -1663,6 +1962,55 @@
       }
     }
 
+    // DEM Terrain Elevation API Lookup with Barometric Altimeter Offset Calibration
+    async function fetchDemElevationCalibrated(latLngList, altA, altB) {
+      try {
+        const lats = latLngList.map(p => p.lat.toFixed(6)).join(',');
+        const lngs = latLngList.map(p => p.lng.toFixed(6)).join(',');
+        const url = `https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`;
+        
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Elevation API request failed');
+        const data = await response.json();
+        
+        if (data && data.elevation && data.elevation.length === latLngList.length) {
+          const demArray = data.elevation;
+          const demA = demArray[0];
+          const demB = demArray[demArray.length - 1];
+
+          // Compute barometric offset deltas at Point A and Point B
+          const offsetA = altA - demA;
+          const offsetB = altB - demB;
+
+          // Compute cumulative spatial distances for exact distance-weighted calibration ramp
+          let cumDists = [0];
+          let totalLen = 0;
+          for (let i = 1; i < latLngList.length; i++) {
+            const d = calcHaversine(latLngList[i-1].lat, latLngList[i-1].lng, latLngList[i].lat, latLngList[i].lng);
+            totalLen += d;
+            cumDists.push(totalLen);
+          }
+
+          // Apply calibrated elevation with distance-weighted barometric offset ramp!
+          const calibratedAlts = demArray.map((demVal, i) => {
+            const ratio = totalLen > 0 ? cumDists[i] / totalLen : i / (latLngList.length - 1 || 1);
+            const rampOffset = offsetA + ratio * (offsetB - offsetA);
+            return demVal + rampOffset;
+          });
+
+          return calibratedAlts;
+        }
+      } catch (err) {
+        console.warn('DEM Elevation API unavailable, falling back to barometric ramp:', err);
+      }
+
+      // Fallback: Linear ramp if offline or API unavailable
+      return latLngList.map((p, i) => {
+        const ratio = i / (latLngList.length - 1 || 1);
+        return altA + ratio * (altB - altA);
+      });
+    }
+
     // --- ACTIVITY STATS RECALCULATION & UI ---
     function updateActivityStatsUI() {
       if (records.length === 0) return;
@@ -1670,7 +2018,6 @@
       const totalDist = records[records.length - 1].dist || 0;
       const totalTimeSec = records[records.length - 1].timestamp - records[0].timestamp;
 
-      // Filter valid moving heart rate values
       const validHrs = records.filter(r => r.hr && r.hr > 0).map(r => r.hr);
       const avgHr = validHrs.length > 0 ? Math.round(validHrs.reduce((a, b) => a + b, 0) / validHrs.length) : 0;
 
@@ -1691,8 +2038,7 @@
       document.getElementById('exportModal').classList.remove('open');
     }
 
-    function buildRepairedFitBinary() {
-      // 1. Clone records and apply Tangles filter
+    async function buildRepairedFitBinary() {
       let activeTangles = detectedTangles.filter(t => t.active);
       let filterMask = new Array(records.length).fill(true);
 
@@ -1706,11 +2052,10 @@
       let currentDistanceOffset = 0;
 
       for (let i = 0; i < records.length; i++) {
-        if (!filterMask[i]) continue; // skip dropped points
+        if (!filterMask[i]) continue;
 
         let r = Object.assign({}, records[i]);
 
-        // Adjust distance value by cumulative tangle cutouts
         activeTangles.forEach(t => {
           if (i >= t.endIdx) {
             const cutDist = records[t.endIdx].dist - records[t.startIdx].dist;
@@ -1722,14 +2067,69 @@
         repairedRecords.push(r);
       }
 
-      // Recalculate summary HR and Cadence exclusively from remaining valid moving points!
+      // Interpolate drawn waypoints with DEM Real Terrain & Barometric Calibration Offset
+      if (drawnRouteNodes.length > 0 && detectedGaps.length > 0) {
+        const targetGap = detectedGaps[0];
+        const recA = records[targetGap.startIdx];
+        const recB = records[targetGap.endIdx];
+
+        const allNodes = [{ lat: recA.lat, lng: recA.lng }, ...drawnRouteNodes, { lat: recB.lat, lng: recB.lng }];
+
+        // Fetch DEM real elevation heights calibrated to watch's barometric baseline!
+        const calibratedAlts = await fetchDemElevationCalibrated(allNodes, recA.alt || 250, recB.alt || 250);
+
+        let totalDrawnLength = 0;
+        let prevPt = recA;
+        drawnRouteNodes.forEach(node => {
+          totalDrawnLength += calcHaversine(prevPt.lat, prevPt.lng, node.lat, node.lng);
+          prevPt = node;
+        });
+        totalDrawnLength += calcHaversine(prevPt.lat, prevPt.lng, recB.lat, recB.lng);
+
+        const totalDt = recB.timestamp - recA.timestamp;
+        let currDist = recA.dist || 0;
+        let prevNode = recA;
+        let drawnWaypointsRecs = [];
+
+        drawnRouteNodes.forEach((node, nIdx) => {
+          const segDist = calcHaversine(prevNode.lat, prevNode.lng, node.lat, node.lng);
+          currDist += segDist;
+
+          const ratio = (currDist - (recA.dist || 0)) / (totalDrawnLength || 1);
+          const t = Math.round(recA.timestamp + totalDt * ratio);
+
+          // Calibrated DEM elevation value
+          const alt = calibratedAlts[nIdx + 1] || ((recA.alt || 250) + ratio * ((recB.alt || 250) - (recA.alt || 250)));
+          const hr = Math.round((recA.hr || 140) + ratio * ((recB.hr || 140) - (recA.hr || 140)));
+          const cad = Math.round((recA.cadence || 85) + ratio * ((recB.cadence || 85) - (recA.cadence || 85)));
+          const spd = totalDt > 0 ? (totalDrawnLength / 1000) / (totalDt / 3600) : 10.0;
+
+          drawnWaypointsRecs.push({
+            timestamp: t,
+            lat: node.lat,
+            lng: node.lng,
+            alt: alt,
+            hr: hr,
+            cadence: cad,
+            speed: spd,
+            dist: currDist
+          });
+
+          prevNode = node;
+        });
+
+        const insertPos = repairedRecords.findIndex(r => r.timestamp >= recB.timestamp);
+        if (insertPos >= 0) {
+          repairedRecords.splice(insertPos, 0, ...drawnWaypointsRecs);
+        }
+      }
+
       const validHrs = repairedRecords.filter(r => r.hr && r.hr > 0).map(r => r.hr);
       const avgHr = validHrs.length > 0 ? Math.round(validHrs.reduce((a, b) => a + b, 0) / validHrs.length) : 0;
 
       const validCads = repairedRecords.filter(r => r.cadence && r.cadence > 0).map(r => r.cadence);
       const avgCad = validCads.length > 0 ? Math.round(validCads.reduce((a, b) => a + b, 0) / validCads.length) : 0;
 
-      // 2. Encode to FIT Binary with Header Duplicity Bypass (+1 sec time_created shift)
       const encodedBuffer = encodeNativeFitBinary(repairedRecords, fileIdHeader, avgHr, avgCad);
       return encodedBuffer;
     }
@@ -1738,41 +2138,38 @@
       // Shift file_id time_created by +1 second to bypass Garmin Connect duplicate check!
       const shiftedTimeCreated = (headerInfo.timeCreated || Math.round(Date.now()/1000) - GARMIN_EPOCH_OFFSET) + 1;
 
-      // Build FIT Binary Data stream
       const buffer = new ArrayBuffer(repairedRecs.length * 64 + 1024);
       const view = new DataView(buffer);
       const bytes = new Uint8Array(buffer);
 
-      let offset = 14; // Header Size
+      let offset = 14;
 
       // --- Definition Message: Local 0 = file_id (Global 0) ---
-      bytes[offset++] = 0x40; // Def Header, Local 0
-      bytes[offset++] = 0x00; // Reserved
-      bytes[offset++] = 0x00; // Arch Little Endian
-      view.setUint16(offset, 0, true); offset += 2; // Global Msg 0 (file_id)
-      bytes[offset++] = 4; // 4 fields
+      bytes[offset++] = 0x40;
+      bytes[offset++] = 0x00;
+      bytes[offset++] = 0x00;
+      view.setUint16(offset, 0, true); offset += 2;
+      bytes[offset++] = 4;
 
-      // Fields: 0:type(1B), 1:manufacturer(2B), 2:product(2B), 4:time_created(4B)
       bytes[offset++] = 0; bytes[offset++] = 1; bytes[offset++] = 0x00;
       bytes[offset++] = 1; bytes[offset++] = 2; bytes[offset++] = 0x84;
       bytes[offset++] = 2; bytes[offset++] = 2; bytes[offset++] = 0x84;
       bytes[offset++] = 4; bytes[offset++] = 4; bytes[offset++] = 0x86;
 
       // Data Message: Local 0 (file_id)
-      bytes[offset++] = 0x00; // Data Header Local 0
-      bytes[offset++] = 4; // activity type
-      view.setUint16(offset, 1, true); offset += 2; // Garmin manufacturer
-      view.setUint16(offset, 1, true); offset += 2; // Product
-      view.setUint32(offset, shiftedTimeCreated, true); offset += 4; // +1s Shifted time_created!
+      bytes[offset++] = 0x00;
+      bytes[offset++] = 4;
+      view.setUint16(offset, 1, true); offset += 2;
+      view.setUint16(offset, 1, true); offset += 2;
+      view.setUint32(offset, shiftedTimeCreated, true); offset += 4;
 
       // --- Definition Message: Local 1 = record (Global 20) ---
-      bytes[offset++] = 0x41; // Def Header, Local 1
+      bytes[offset++] = 0x41;
       bytes[offset++] = 0x00;
       bytes[offset++] = 0x00;
-      view.setUint16(offset, 20, true); offset += 2; // Global Msg 20 (record)
-      bytes[offset++] = 7; // 7 fields
+      view.setUint16(offset, 20, true); offset += 2;
+      bytes[offset++] = 7;
 
-      // Fields: 253:timestamp(4B), 0:lat(4B), 1:lng(4B), 78:alt(4B), 3:hr(1B), 4:cadence(1B), 5:distance(4B)
       bytes[offset++] = 253; bytes[offset++] = 4; bytes[offset++] = 0x86;
       bytes[offset++] = 0;   bytes[offset++] = 4; bytes[offset++] = 0x85;
       bytes[offset++] = 1;   bytes[offset++] = 4; bytes[offset++] = 0x85;
@@ -1783,7 +2180,7 @@
 
       // Data Messages: Local 1 (records)
       for (const r of repairedRecs) {
-        bytes[offset++] = 0x01; // Data Header Local 1
+        bytes[offset++] = 0x01;
         view.setUint32(offset, r.timestamp, true); offset += 4;
         view.setInt32(offset, Math.round(r.lat * 2147483648 / 180), true); offset += 4;
         view.setInt32(offset, Math.round(r.lng * 2147483648 / 180), true); offset += 4;
@@ -1795,11 +2192,11 @@
 
       // Write FIT 14-byte Header
       const dataSize = offset - 14;
-      view.setUint8(0, 14); // Header size
-      view.setUint8(1, 0x20); // Protocol ver 2.0
-      view.setUint16(2, 21192, true); // Profile ver
-      view.setUint32(4, dataSize, true); // Data size
-      bytes[8] = 46; bytes[9] = 70; bytes[10] = 73; bytes[11] = 84; // '.FIT'
+      view.setUint8(0, 14);
+      view.setUint8(1, 0x20);
+      view.setUint16(2, 21192, true);
+      view.setUint32(4, dataSize, true);
+      bytes[8] = 46; bytes[9] = 70; bytes[10] = 73; bytes[11] = 84;
       const headerCrc = calcFitCrc(bytes, 0, 12);
       view.setUint16(12, headerCrc, true);
 
@@ -1811,7 +2208,6 @@
       return buffer.slice(0, offset);
     }
 
-    // Garmin FIT CRC16 Lookup Algorithm
     const fitCrcTable = [
       0x0000, 0xCC01, 0xD801, 0x1400, 0xF001, 0x3C00, 0x2800, 0xE401,
       0xA001, 0x6C00, 0x7800, 0xB401, 0x5000, 0x9C01, 0x8801, 0x4400
@@ -1829,9 +2225,8 @@
       return crc;
     }
 
-    // Download Repaired FIT File
-    function downloadFitFile() {
-      const buffer = buildRepairedFitBinary();
+    async function downloadFitFile() {
+      const buffer = await buildRepairedFitBinary();
       const blob = new Blob([buffer], { type: 'application/octet-stream' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1843,7 +2238,6 @@
       URL.revokeObjectURL(url);
     }
 
-    // Download GPX File
     function downloadGpxFile() {
       let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Garmin FIT Repair Studio">\n  <trk>\n    <name>Repaired Activity</name>\n    <trkseg>\n`;
       records.forEach(r => {
@@ -1863,9 +2257,8 @@
       URL.revokeObjectURL(url);
     }
 
-    // Helper Math Functions
     function calcHaversine(lat1, lon1, lat2, lon2) {
-      const R = 6371000; // Earth radius in meters
+      const R = 6371000;
       const dLat = (lat2 - lat1) * Math.PI / 180;
       const dLon = (lon2 - lon1) * Math.PI / 180;
       const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +

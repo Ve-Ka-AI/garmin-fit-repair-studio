@@ -980,7 +980,7 @@
     <!-- Center/Right View: Leaflet Map & Elevation Chart -->
     <main class="main-view">
 
-      <!-- Floating Map View Mode Switcher (Před / Po) -->
+      <!-- Floating Map View Mode & Basemap Switcher -->
       <div class="map-toolbar-floating">
         <div class="map-view-switcher">
           <button type="button" class="view-btn active" id="btnViewBefore" onclick="setMapViewMode('before')">
@@ -988,6 +988,18 @@
           </button>
           <button type="button" class="view-btn" id="btnViewAfter" onclick="setMapViewMode('after')">
             <i class="fa-solid fa-wand-magic-sparkles"></i> <span data-i18n="viewAfter">Po (Náhled opravy)</span>
+          </button>
+        </div>
+
+        <div class="map-view-switcher">
+          <button type="button" class="view-btn active" id="btnBaseDark" onclick="setBasemap('dark')" title="Tmavá mapa">
+            <i class="fa-solid fa-moon"></i> <span>Tmavá</span>
+          </button>
+          <button type="button" class="view-btn" id="btnBaseTopo" onclick="setBasemap('topo')" title="Turistická a cyklistická mapa se stezkami">
+            <i class="fa-solid fa-map-location-dot"></i> <span>Turistická 🥾</span>
+          </button>
+          <button type="button" class="view-btn" id="btnBaseOsm" onclick="setBasemap('osm')" title="Standardní mapa">
+            <i class="fa-solid fa-globe"></i> <span>Standard</span>
           </button>
         </div>
       </div>
@@ -1220,15 +1232,52 @@
       setupDragAndDrop();
     });
 
+    let darkTileLayer, topoTileLayer, osmTileLayer, currentBasemap = 'dark';
+
     function initMap() {
       map = L.map('map', { zoomControl: true }).setView([49.8, 15.5], 8);
 
-      // CartoDB Dark Matter tile layer
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
         subdomains: 'abcd',
         maxZoom: 19
-      }).addTo(map);
+      });
+
+      topoTileLayer = L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CyclOSM',
+        maxZoom: 18
+      });
+
+      osmTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19
+      });
+
+      darkTileLayer.addTo(map);
+    }
+
+    function setBasemap(type) {
+      if (currentBasemap === type) return;
+      currentBasemap = type;
+
+      map.removeLayer(darkTileLayer);
+      map.removeLayer(topoTileLayer);
+      map.removeLayer(osmTileLayer);
+
+      document.getElementById('btnBaseDark').classList.remove('active');
+      document.getElementById('btnBaseTopo').classList.remove('active');
+      document.getElementById('btnBaseOsm').classList.remove('active');
+
+      if (type === 'dark') {
+        darkTileLayer.addTo(map);
+        document.getElementById('btnBaseDark').classList.add('active');
+      } else if (type === 'topo') {
+        topoTileLayer.addTo(map);
+        document.getElementById('btnBaseTopo').classList.add('active');
+      } else if (type === 'osm') {
+        osmTileLayer.addTo(map);
+        document.getElementById('btnBaseOsm').classList.add('active');
+      }
     }
 
     function initChart() {
@@ -1739,12 +1788,32 @@
       if (records.length === 0) return;
 
       renderMapTrack();
+      if (records.length > 0 && trackPolyline) {
+        map.fitBounds(trackPolyline.getBounds(), { padding: [40, 40] });
+      }
       renderChartData();
 
       runTangleDetection();
       runGapDetection();
 
       updateActivityStatsUI();
+    }
+
+    function setMapViewMode(mode) {
+      if (currentMapViewMode === mode) return;
+      currentMapViewMode = mode;
+
+      document.getElementById('btnViewBefore').classList.toggle('active', mode === 'before');
+      document.getElementById('btnViewAfter').classList.toggle('active', mode === 'after');
+
+      // Save exact map center and zoom level so view never jumps or resets!
+      const currentCenter = map.getCenter();
+      const currentZoom = map.getZoom();
+
+      renderMapTrack();
+      renderTanglesOnMap();
+
+      map.setView(currentCenter, currentZoom, { animate: false });
     }
 
     function renderMapTrack() {
@@ -1776,10 +1845,6 @@
           weight: 4,
           opacity: 0.85
         }).addTo(map);
-      }
-
-      if (records.length > 0) {
-        map.fitBounds(trackPolyline.getBounds(), { padding: [40, 40] });
       }
     }
 

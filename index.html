@@ -497,6 +497,51 @@
       position: relative;
     }
 
+    /* Floating Map Toolbar (Před / Po) */
+    .map-toolbar-floating {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 1000;
+      display: flex;
+      gap: 8px;
+    }
+
+    .map-view-switcher {
+      display: flex;
+      background: rgba(17, 24, 39, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border-glow);
+      border-radius: 12px;
+      padding: 4px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      gap: 4px;
+    }
+
+    .view-btn {
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      font-family: 'Outfit', sans-serif;
+      color: var(--text-muted);
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .view-btn.active {
+      background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+      color: #070a12;
+      font-weight: 700;
+      box-shadow: 0 2px 10px rgba(56, 189, 248, 0.35);
+    }
+
     #map {
       flex: 1;
       width: 100%;
@@ -916,6 +961,19 @@
 
     <!-- Center/Right View: Leaflet Map & Elevation Chart -->
     <main class="main-view">
+
+      <!-- Floating Map View Mode Switcher (Před / Po) -->
+      <div class="map-toolbar-floating">
+        <div class="map-view-switcher">
+          <button type="button" class="view-btn active" id="btnViewBefore" onclick="setMapViewMode('before')">
+            <i class="fa-solid fa-eye"></i> <span data-i18n="viewBefore">Před (Původní)</span>
+          </button>
+          <button type="button" class="view-btn" id="btnViewAfter" onclick="setMapViewMode('after')">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> <span data-i18n="viewAfter">Po (Náhled opravy)</span>
+          </button>
+        </div>
+      </div>
+
       <div id="map"></div>
 
       <!-- Bottom Synchronized Telemetry Chart Drawer -->
@@ -1049,7 +1107,9 @@
         step2Title: "Alternativní postup",
         step2Desc: "Nahrajte opravený soubor bez mazání původního — v účtu se objeví jako druhá samostatná aktivita pro srovnání.",
         btnDownloadGpx: "Stáhnout GPX",
-        btnDownloadFit: "Stáhnout opravený .FIT"
+        btnDownloadFit: "Stáhnout opravený .FIT",
+        viewBefore: "Před (Původní)",
+        viewAfter: "Po (Náhled opravy)"
       },
       en: {
         privacyNotice: "100% Client-Side / Zero Upload",
@@ -1088,7 +1148,9 @@
         step2Title: "Alternative Method",
         step2Desc: "Upload repaired file directly without deleting original — it will appear as a 2nd activity for comparison.",
         btnDownloadGpx: "Download GPX",
-        btnDownloadFit: "Download Repaired .FIT"
+        btnDownloadFit: "Download Repaired .FIT",
+        viewBefore: "Before (Original)",
+        viewAfter: "After (Repaired)"
       }
     };
 
@@ -1118,7 +1180,7 @@
     let scannedBatchFiles = []; // [{filename, buffer, records, tanglesCount, gapsCount}]
     let activeBatchIndex = -1;
 
-    let detectedTangles = []; // [{id, startIdx, endIdx, active, markerA, markerB, circlePoly}]
+    let detectedTangles = []; // [{id, startIdx, endIdx, active, markerA, markerB, circlePoly, tangledPolyline, bridgePolyline}]
     let detectedGaps = []; // [{id, startIdx, endIdx, drawnWaypoints:[]}]
 
     let map = null;
@@ -1126,6 +1188,7 @@
     let mapCursorMarker = null;
     let chart = null;
     let currentChartMode = 'alt'; // 'alt', 'hr', 'speed', 'cad'
+    let currentMapViewMode = 'before'; // 'before' (Original + Cut Proposal) or 'after' (Repaired Preview)
     let isDrawingMode = false;
     let drawingPolyline = null;
     let drawnRouteNodes = [];
@@ -1195,6 +1258,14 @@
       document.getElementById('cTabSpeed').classList.toggle('active', mode === 'speed');
       document.getElementById('cTabCad').classList.toggle('active', mode === 'cad');
       renderChartData();
+    }
+
+    function setMapViewMode(mode) {
+      currentMapViewMode = mode;
+      document.getElementById('btnViewBefore').classList.toggle('active', mode === 'before');
+      document.getElementById('btnViewAfter').classList.toggle('active', mode === 'after');
+      renderMapTrack();
+      renderTanglesOnMap();
     }
 
     // --- Module Switcher ---
@@ -1656,14 +1727,37 @@
     function renderMapTrack() {
       if (trackPolyline) map.removeLayer(trackPolyline);
 
-      const latLngs = records.map(r => [r.lat, r.lng]);
-      trackPolyline = L.polyline(latLngs, {
-        color: '#38bdf8',
-        weight: 4,
-        opacity: 0.85
-      }).addTo(map);
+      if (currentMapViewMode === 'after') {
+        // Render REPAIRED track (skipping active tangles)
+        let activeTangles = detectedTangles.filter(t => t.active);
+        let filterMask = new Array(records.length).fill(true);
+        activeTangles.forEach(t => {
+          for (let k = t.startIdx + 1; k < t.endIdx; k++) filterMask[k] = false;
+        });
 
-      map.fitBounds(trackPolyline.getBounds(), { padding: [40, 40] });
+        let repairedLatLngs = [];
+        for (let i = 0; i < records.length; i++) {
+          if (filterMask[i]) repairedLatLngs.push([records[i].lat, records[i].lng]);
+        }
+
+        trackPolyline = L.polyline(repairedLatLngs, {
+          color: '#10b981', // Clean green track for "After" view
+          weight: 4,
+          opacity: 0.9
+        }).addTo(map);
+      } else {
+        // Render ORIGINAL full track (blue)
+        const latLngs = records.map(r => [r.lat, r.lng]);
+        trackPolyline = L.polyline(latLngs, {
+          color: '#38bdf8',
+          weight: 4,
+          opacity: 0.85
+        }).addTo(map);
+      }
+
+      if (records.length > 0) {
+        map.fitBounds(trackPolyline.getBounds(), { padding: [40, 40] });
+      }
     }
 
     function highlightMapCursor(idx) {
@@ -1775,6 +1869,8 @@
         if (t.circlePoly) map.removeLayer(t.circlePoly);
         if (t.markerA) map.removeLayer(t.markerA);
         if (t.markerB) map.removeLayer(t.markerB);
+        if (t.tangledPolyline) map.removeLayer(t.tangledPolyline);
+        if (t.bridgePolyline) map.removeLayer(t.bridgePolyline);
       });
       detectedTangles = [];
 
@@ -1802,11 +1898,6 @@
         const duration = records[j - 1].timestamp - records[i].timestamp;
         const avgSpdKmh = duration > 0 ? (totalPathDist / 1000.0) / (duration / 3600.0) : 0;
 
-        // Conditions for REAL stationary tangle:
-        // 1. All points stayed strictly bounded inside radius (confinement)
-        // 2. Duration >= minDurationSec (e.g. 3 min)
-        // 3. Average movement speed inside cluster < 3.2 km/h (resting/drift speed)
-        // 4. Total path distance >= 1.2 * radius (chaotic wandering/jitter inside spot)
         if (duration >= minDurationSec && avgSpdKmh < 3.2 && totalPathDist >= (radiusMeters * 1.2) && (j - i) > 5) {
           detectedTangles.push({
             id: tangleId++,
@@ -1815,7 +1906,9 @@
             active: true,
             circlePoly: null,
             markerA: null,
-            markerB: null
+            markerB: null,
+            tangledPolyline: null,
+            bridgePolyline: null
           });
           i = j;
         } else {
@@ -1829,18 +1922,49 @@
     }
 
     function renderTanglesOnMap() {
+      // Clear existing tangle map layers
+      detectedTangles.forEach(t => {
+        if (t.circlePoly) map.removeLayer(t.circlePoly);
+        if (t.markerA) map.removeLayer(t.markerA);
+        if (t.markerB) map.removeLayer(t.markerB);
+        if (t.tangledPolyline) map.removeLayer(t.tangledPolyline);
+        if (t.bridgePolyline) map.removeLayer(t.bridgePolyline);
+      });
+
+      if (currentMapViewMode === 'after') return; // In "After" mode, hide tangle overlays
+
       detectedTangles.forEach(t => {
         const startRec = records[t.startIdx];
         const endRec = records[t.endIdx];
 
+        // 1. Red circle area
         const circle = L.circle([startRec.lat, startRec.lng], {
           color: '#f43f5e',
           fillColor: '#f43f5e',
-          fillOpacity: 0.25,
+          fillOpacity: 0.18,
           radius: parseFloat(document.getElementById('inputRadius').value)
         }).addTo(map);
         t.circlePoly = circle;
 
+        // 2. Red highlighted tangled track segment (points inside A-B)
+        const tangledPts = records.slice(t.startIdx, t.endIdx + 1).map(r => [r.lat, r.lng]);
+        const tangledPoly = L.polyline(tangledPts, {
+          color: '#f43f5e',
+          weight: 4,
+          opacity: 0.9
+        }).addTo(map);
+        t.tangledPolyline = tangledPoly;
+
+        // 3. Green dashed proposed cut bridge line (connecting A directly to B)
+        const bridgePoly = L.polyline([[startRec.lat, startRec.lng], [endRec.lat, endRec.lng]], {
+          color: '#10b981',
+          weight: 4,
+          dashArray: '6, 6',
+          opacity: 1.0
+        }).addTo(map);
+        t.bridgePolyline = bridgePoly;
+
+        // 4. Draggable Markers A and B
         const iconA = L.divIcon({
           className: 'custom-div-icon',
           html: `<div class="marker-badge marker-a">A</div>`,
@@ -1868,8 +1992,8 @@
       let minD = Infinity;
       let closestIdx = tangle.startIdx;
 
-      const searchStart = Math.max(0, tangle.startIdx - 50);
-      const searchEnd = Math.min(records.length - 1, tangle.endIdx + 50);
+      const searchStart = Math.max(0, tangle.startIdx - 80);
+      const searchEnd = Math.min(records.length - 1, tangle.endIdx + 80);
 
       for (let k = searchStart; k <= searchEnd; k++) {
         const d = calcHaversine(latLng.lat, latLng.lng, records[k].lat, records[k].lng);
@@ -1883,6 +2007,21 @@
         if (closestIdx < tangle.endIdx) tangle.startIdx = closestIdx;
       } else {
         if (closestIdx > tangle.startIdx) tangle.endIdx = closestIdx;
+      }
+
+      const recA = records[tangle.startIdx];
+      const recB = records[tangle.endIdx];
+
+      // Update map graphics live while dragging!
+      if (tangle.tangledPolyline) {
+        const tangledPts = records.slice(tangle.startIdx, tangle.endIdx + 1).map(r => [r.lat, r.lng]);
+        tangle.tangledPolyline.setLatLngs(tangledPts);
+      }
+      if (tangle.bridgePolyline) {
+        tangle.bridgePolyline.setLatLngs([[recA.lat, recA.lng], [recB.lat, recB.lng]]);
+      }
+      if (tangle.circlePoly) {
+        tangle.circlePoly.setLatLng([recA.lat, recA.lng]);
       }
 
       updateTangleListUI();
@@ -1933,6 +2072,7 @@
       if (t) {
         t.active = checked;
         updateLiveSavingsUI();
+        if (currentMapViewMode === 'after') renderMapTrack();
       }
     }
 

@@ -997,13 +997,13 @@
         </div>
 
         <div class="map-view-switcher">
-          <button type="button" class="view-btn active" id="btnBaseDark" onclick="setBasemap('dark')" title="Tmavá mapa">
+          <button type="button" class="view-btn" id="btnBaseDark" onclick="setBasemap('dark')" title="Tmavá mapa">
             <i class="fa-solid fa-moon"></i> <span>Tmavá</span>
           </button>
           <button type="button" class="view-btn" id="btnBaseTopo" onclick="setBasemap('topo')" title="Turistická a cyklistická mapa se stezkami">
             <i class="fa-solid fa-map-location-dot"></i> <span>Turistická 🥾</span>
           </button>
-          <button type="button" class="view-btn" id="btnBaseOsm" onclick="setBasemap('osm')" title="Standardní mapa">
+          <button type="button" class="view-btn active" id="btnBaseOsm" onclick="setBasemap('osm')" title="Standardní mapa">
             <i class="fa-solid fa-globe"></i> <span>Standard</span>
           </button>
         </div>
@@ -1237,7 +1237,7 @@
       setupDragAndDrop();
     });
 
-    let darkTileLayer, topoTileLayer, osmTileLayer, currentBasemap = 'dark';
+    let darkTileLayer, topoTileLayer, osmTileLayer, currentBasemap = 'osm';
 
     function initMap() {
       map = L.map('map', { zoomControl: true }).setView([49.8, 15.5], 8);
@@ -1258,7 +1258,7 @@
         maxZoom: 19
       });
 
-      darkTileLayer.addTo(map);
+      osmTileLayer.addTo(map);
     }
 
     function setBasemap(type) {

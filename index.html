@@ -1411,7 +1411,50 @@
           const hdr = data[idx++];
           const isCompressed = (hdr & 0x80) !== 0;
 
-          if (!isCompressed) {
+          if (isCompressed) {
+            const localId = (hdr >> 5) & 0x03;
+            const def = defs[localId];
+            if (!def) continue;
+            const isLittle = def.isLittle;
+            const msgData = {};
+            for (const field of def.fields) {
+              if (idx + field.size > data.length) break;
+              msgData[field.num] = { raw: data.subarray(idx, idx + field.size), size: field.size };
+              idx += field.size;
+            }
+            if (def.devFields) {
+              for (const df of def.devFields) idx += df.size;
+            }
+
+            if (def.globalMsg === 20) { // record
+              const rec = {};
+              for (const fn in msgData) {
+                const { raw, size } = msgData[fn];
+                const dv = new DataView(raw.buffer, raw.byteOffset, size);
+                if (fn == 253 && size === 4) rec.timestamp = dv.getUint32(0, isLittle);
+                else if (fn == 0 && size === 4) {
+                  const val = dv.getInt32(0, isLittle);
+                  if (val !== 2147483647 && val !== 0 && val !== -2147483648) rec.lat = val * (180.0 / 2147483648.0);
+                }
+                else if (fn == 1 && size === 4) {
+                  const val = dv.getInt32(0, isLittle);
+                  if (val !== 2147483647 && val !== 0 && val !== -2147483648) rec.lng = val * (180.0 / 2147483648.0);
+                }
+                else if ((fn == 78 || fn == 2) && size >= 2) {
+                  rec.alt = (size === 4 ? dv.getUint32(0, isLittle) : dv.getUint16(0, isLittle)) / 5.0 - 500.0;
+                }
+                else if (fn == 3 && size === 1) rec.hr = raw[0];
+                else if (fn == 4 && size === 1) rec.cadence = raw[0];
+                else if ((fn == 73 || fn == 6) && size >= 2) {
+                  rec.speed = (size === 4 ? dv.getUint32(0, isLittle) : dv.getUint16(0, isLittle)) / 1000.0 * 3.6;
+                }
+                else if ((fn == 5 || fn == 77) && size === 4) rec.dist = dv.getUint32(0, isLittle) / 100.0;
+              }
+              if (rec.lat !== undefined && rec.lng !== undefined && Math.abs(rec.lat) <= 89.0 && Math.abs(rec.lng) <= 180.0 && rec.lat !== 0 && rec.lng !== 0) {
+                recs.push(rec);
+              }
+            }
+          } else {
             const isDef = (hdr & 0x40) !== 0;
             const hasDev = (hdr & 0x20) !== 0;
             const localId = hdr & 0x0F;
@@ -1450,7 +1493,7 @@
                 idx += field.size;
               }
               if (def.devFields) {
-                for (const df of def.devFields) idx += df.size;
+                for (const df of df.devFields) idx += df.size;
               }
 
               const gNum = def.globalMsg;
@@ -1466,8 +1509,14 @@
                   const { raw, size } = msgData[fn];
                   const dv = new DataView(raw.buffer, raw.byteOffset, size);
                   if (fn == 253 && size === 4) rec.timestamp = dv.getUint32(0, isLittle);
-                  else if (fn == 0 && size === 4) rec.lat = dv.getInt32(0, isLittle) * (180.0 / 2147483648.0);
-                  else if (fn == 1 && size === 4) rec.lng = dv.getInt32(0, isLittle) * (180.0 / 2147483648.0);
+                  else if (fn == 0 && size === 4) {
+                    const val = dv.getInt32(0, isLittle);
+                    if (val !== 2147483647 && val !== 0 && val !== -2147483648) rec.lat = val * (180.0 / 2147483648.0);
+                  }
+                  else if (fn == 1 && size === 4) {
+                    const val = dv.getInt32(0, isLittle);
+                    if (val !== 2147483647 && val !== 0 && val !== -2147483648) rec.lng = val * (180.0 / 2147483648.0);
+                  }
                   else if ((fn == 78 || fn == 2) && size >= 2) {
                     rec.alt = (size === 4 ? dv.getUint32(0, isLittle) : dv.getUint16(0, isLittle)) / 5.0 - 500.0;
                   }
@@ -1478,7 +1527,9 @@
                   }
                   else if ((fn == 5 || fn == 77) && size === 4) rec.dist = dv.getUint32(0, isLittle) / 100.0;
                 }
-                if (rec.lat && rec.lng) recs.push(rec);
+                if (rec.lat !== undefined && rec.lng !== undefined && Math.abs(rec.lat) <= 89.0 && Math.abs(rec.lng) <= 180.0 && rec.lat !== 0 && rec.lng !== 0) {
+                  recs.push(rec);
+                }
               }
             }
           }

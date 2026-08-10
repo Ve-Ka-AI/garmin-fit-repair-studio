@@ -860,9 +860,14 @@
       
       <!-- Activity Summary Header Card -->
       <div class="card">
-        <div class="card-title">
-          <span id="actName" data-i18n="noFileLoaded">Žádná aktivita načtena</span>
-          <span id="actDate" style="font-size:0.75rem; color:var(--text-muted);">--.--.----</span>
+        <div class="card-title" style="flex-direction:column; align-items:flex-start; gap:4px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+            <span id="actName" data-i18n="noFileLoaded" style="font-weight:800; font-size:0.95rem;">Žádná aktivita načtena</span>
+            <span id="actDate" style="font-size:0.75rem; color:var(--text-muted);">--.--.----</span>
+          </div>
+          <div id="actSportBadge" class="badge-flag badge-clean" style="display:none; font-size:0.75rem; font-weight:700;">
+            🏃 Běh
+          </div>
         </div>
         <div class="stats-grid">
           <div class="stat-box">
@@ -1589,6 +1594,11 @@
                   const dv = new DataView(raw.buffer, raw.byteOffset, size);
                   if (fn == 4 && size === 4) fHeader.timeCreated = dv.getUint32(0, isLittle);
                 }
+              } else if (gNum === 18 || gNum === 12) { // session or sport
+                for (const fn in msgData) {
+                  const { raw, size } = msgData[fn];
+                  if (fn == 0 && size === 1) fHeader.sport = raw[0];
+                }
               } else if (gNum === 20) { // record
                 const rec = {};
                 for (const fn in msgData) {
@@ -2239,6 +2249,23 @@
       });
     }
 
+    const GARMIN_SPORT_NAMES = {
+      cs: {
+        0: 'Obecná aktivita', 1: '🏃 Běh', 2: '🚴 Cyklistika', 3: '🏊‍♂️ Triatlon', 4: '🏋️ Fitness / Posilování',
+        5: '🏊 Plavání', 6: '🏀 Basketbal', 7: '⚽ Fotbal', 8: '🎾 Tenis', 10: '💪 Trénink', 11: '🚶 Chůze',
+        12: '🎿 Běžkování', 13: '🎿 Sjezdové lyžování', 14: '🏂 Snowboard', 15: '🚣 Veslování', 17: '🥾 Turistika / Hiking',
+        18: '🚣 Pádlování', 20: '🏍️ Motocykl', 21: '⛵ Jachting', 22: '🚗 Řízení', 23: '⛳ Golf', 24: '🎽 Multisport',
+        25: '🏄 SUP', 28: '🚣 Kajak', 30: '🏄 Windsurfing', 35: '🧗 Schody', 37: '🧗 Lezení'
+      },
+      en: {
+        0: 'Generic Activity', 1: '🏃 Running', 2: '🚴 Cycling', 3: '🏊‍♂️ Transition', 4: '🏋️ Fitness',
+        5: '🏊 Swimming', 6: '🏀 Basketball', 7: '⚽ Soccer', 8: '🎾 Tennis', 10: '💪 Training', 11: '🚶 Walking',
+        12: '🎿 XC Skiing', 13: '🎿 Alpine Skiing', 14: '🏂 Snowboarding', 15: '🚣 Rowing', 17: '🥾 Hiking',
+        18: '🚣 Paddling', 20: '🏍️ Motorcycling', 21: '⛵ Boating', 22: '🚗 Driving', 23: '⛳ Golf', 24: '🎽 Multisport',
+        25: '🏄 SUP', 28: '🚣 Kayaking', 30: '🏄 Windsurfing', 35: '🧗 Stairs', 37: '🧗 Climbing'
+      }
+    };
+
     // --- ACTIVITY STATS RECALCULATION & UI ---
     function updateActivityStatsUI() {
       if (records.length === 0) return;
@@ -2255,6 +2282,15 @@
       document.getElementById('statTime').innerText = formatSeconds(totalTimeSec);
       document.getElementById('statAvgSpeed').innerText = avgSpeedKmh.toFixed(1) + ' km/h';
       document.getElementById('statAvgHr').innerText = (avgHr > 0 ? avgHr + ' bpm' : '--');
+
+      if (fileIdHeader && fileIdHeader.sport !== undefined) {
+        const sportMap = GARMIN_SPORT_NAMES[currentLang] || GARMIN_SPORT_NAMES.cs;
+        const sportName = sportMap[fileIdHeader.sport] || `Aktivita #${fileIdHeader.sport}`;
+        document.getElementById('actSportBadge').innerText = sportName;
+        document.getElementById('actSportBadge').style.display = 'inline-flex';
+      } else {
+        document.getElementById('actSportBadge').style.display = 'none';
+      }
     }
 
     // --- RECONSTRUCTION & EXPORT ENGINE ---

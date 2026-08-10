@@ -1855,9 +1855,11 @@
         }
 
         const dur = recs[j - 1].timestamp - recs[i].timestamp;
+        const recCount = j - i;
+        const avgIntervalSec = dur > 0 ? dur / (recCount || 1) : 999;
         const avgSpdKmh = dur > 0 ? (totalPathDist / 1000.0) / (dur / 3600.0) : 0;
 
-        if (dur >= minDurationSec && avgSpdKmh < 3.2 && totalPathDist >= (radiusMeters * 1.2) && (j - i) > 5) {
+        if (dur >= minDurationSec && avgSpdKmh < 3.2 && totalPathDist >= (radiusMeters * 1.2) && recCount >= 15 && avgIntervalSec <= 15.0) {
           count++;
           i = j;
         } else {
@@ -1909,9 +1911,11 @@
         }
 
         const duration = records[j - 1].timestamp - records[i].timestamp;
+        const recCount = j - i;
+        const avgIntervalSec = duration > 0 ? duration / (recCount || 1) : 999;
         const avgSpdKmh = duration > 0 ? (totalPathDist / 1000.0) / (duration / 3600.0) : 0;
 
-        if (duration >= minDurationSec && avgSpdKmh < 3.2 && totalPathDist >= (radiusMeters * 1.2) && (j - i) > 5) {
+        if (duration >= minDurationSec && avgSpdKmh < 3.2 && totalPathDist >= (radiusMeters * 1.2) && recCount >= 15 && avgIntervalSec <= 15.0) {
           detectedTangles.push({
             id: tangleId++,
             startIdx: i,

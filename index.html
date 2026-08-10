@@ -947,6 +947,14 @@
           Aplikace automaticky zjišťuje nepřirozené přímky. Kliknutím na mapu můžete dokreslit chybějící reálnou trasu a načíst reálnou nadmořskou výšku z DEM databáze kalibrovanou na barometr.
         </p>
 
+        <div class="control-group" style="margin-bottom:12px;">
+          <div class="control-header">
+            <span class="control-label" data-i18n="minGapDistLabel">Minimální délka chybějící mezery</span>
+            <span class="control-val" id="valMinGapDist">25 m</span>
+          </div>
+          <input type="range" class="slider" id="inputMinGapDist" min="3" max="100" value="25" oninput="document.getElementById('valMinGapDist').innerText = this.value + ' m'; runGapDetection();">
+        </div>
+
         <button type="button" class="btn btn-primary" id="btnToggleDrawing" onclick="toggleDrawingTool()" style="width:100%; justify-content:center;">
           <i class="fa-solid fa-pencil"></i> <span id="lblDrawingBtn" data-i18n="startDrawing">Zapnout kreslicí nástroj</span>
         </button>
@@ -1876,10 +1884,12 @@
 
     function quickDetectGapsCount(recs) {
       let count = 0;
+      const slider = document.getElementById('inputMinGapDist');
+      const minGapDistM = slider ? parseFloat(slider.value) : 25.0;
       for (let i = 0; i < recs.length - 1; i++) {
         const dt = recs[i + 1].timestamp - recs[i].timestamp;
         const dd = calcHaversine(recs[i].lat, recs[i].lng, recs[i + 1].lat, recs[i + 1].lng);
-        if (dt >= 120 || dd >= 300) count++;
+        if (dt >= 120 && dd >= minGapDistM) count++;
       }
       return count;
     }
@@ -2141,14 +2151,23 @@
 
     // --- MODULE 2: MISSING ROUTE INTERPOLATOR & DEM TERRAIN LOOKUP ---
     function runGapDetection() {
+      if (detectedGaps) {
+        detectedGaps.forEach(g => {
+          if (g.markerA) map.removeLayer(g.markerA);
+          if (g.markerB) map.removeLayer(g.markerB);
+          if (g.gapPolyline) map.removeLayer(g.gapPolyline);
+        });
+      }
       detectedGaps = [];
       let gapId = 1;
+      const slider = document.getElementById('inputMinGapDist');
+      const minGapDistM = slider ? parseFloat(slider.value) : 25.0;
 
       for (let i = 0; i < records.length - 1; i++) {
         const dt = records[i + 1].timestamp - records[i].timestamp;
         const dd = calcHaversine(records[i].lat, records[i].lng, records[i + 1].lat, records[i + 1].lng);
 
-        if (dt >= 120 || dd >= 300) {
+        if (dt >= 120 && dd >= minGapDistM) {
           detectedGaps.push({
             id: gapId++,
             startIdx: i,

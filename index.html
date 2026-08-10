@@ -955,9 +955,14 @@
           <input type="range" class="slider" id="inputMinGapDist" min="3" max="100" value="25" oninput="document.getElementById('valMinGapDist').innerText = this.value + ' m'; runGapDetection();">
         </div>
 
-        <button type="button" class="btn btn-primary" id="btnToggleDrawing" onclick="toggleDrawingTool()" style="width:100%; justify-content:center;">
-          <i class="fa-solid fa-pencil"></i> <span id="lblDrawingBtn" data-i18n="startDrawing">Zapnout kreslicí nástroj</span>
-        </button>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-primary" id="btnToggleDrawing" onclick="toggleDrawingTool()" style="flex:1; justify-content:center;">
+            <i class="fa-solid fa-pencil"></i> <span id="lblDrawingBtn" data-i18n="startDrawing">Zapnout kreslení</span>
+          </button>
+          <button type="button" class="btn" id="btnUndoDrawing" onclick="undoLastDrawnWaypoint()" style="display:none; justify-content:center; background:rgba(244,63,94,0.18); color:var(--accent-rose); border:1px solid rgba(244,63,94,0.3);" title="Vrátit poslední nakreslený bod">
+            <i class="fa-solid fa-rotate-left"></i> <span>Zpět</span>
+          </button>
+        </div>
 
         <div class="dem-status-box" id="demStatusBox" style="display:none;">
           <i class="fa-solid fa-mountain" style="color:var(--primary);"></i>
@@ -1816,6 +1821,38 @@
       map.setView(currentCenter, currentZoom, { animate: false });
     }
 
+    let arrowMarkersGroup = null;
+
+    function calcHeading(lat1, lon1, lat2, lon2) {
+      const dLng = (lon2 - lon1) * Math.PI / 180;
+      const y = Math.sin(dLng) * Math.cos(lat2 * Math.PI / 180);
+      const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+                Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLng);
+      return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    }
+
+    function renderDirectionArrows(latLngs) {
+      if (!arrowMarkersGroup) arrowMarkersGroup = L.layerGroup();
+      arrowMarkersGroup.clearLayers();
+      if (!map || !latLngs || latLngs.length < 2) return;
+
+      const step = Math.max(6, Math.floor(latLngs.length / 40));
+      for (let i = 0; i < latLngs.length - 1; i += step) {
+        const p1 = latLngs[i];
+        const p2 = latLngs[Math.min(i + 3, latLngs.length - 1)];
+        const angle = calcHeading(p1[0], p1[1], p2[0], p2[1]);
+
+        const icon = L.divIcon({
+          className: 'custom-arrow-icon',
+          html: `<div style="transform: rotate(${Math.round(angle)}deg); font-size:11px; color:#ffffff; text-shadow:0 0 3px #000, 0 0 6px #0284c7; line-height:1; pointer-events:none; font-weight:900;">▲</div>`,
+          iconSize: [14, 14],
+          iconAnchor: [7, 7]
+        });
+        L.marker(p1, { icon: icon, interactive: false }).addTo(arrowMarkersGroup);
+      }
+      arrowMarkersGroup.addTo(map);
+    }
+
     function renderMapTrack() {
       if (trackPolyline) map.removeLayer(trackPolyline);
 
@@ -1837,6 +1874,7 @@
           weight: 4,
           opacity: 0.9
         }).addTo(map);
+        renderDirectionArrows(repairedLatLngs);
       } else {
         // Render ORIGINAL full track (blue)
         const latLngs = records.map(r => [r.lat, r.lng]);
@@ -1845,6 +1883,7 @@
           weight: 4,
           opacity: 0.85
         }).addTo(map);
+        renderDirectionArrows(latLngs);
       }
     }
 
@@ -2250,6 +2289,9 @@
       updateGapListUI();
     }
 
+    let drawingMarkersLayer = null;
+    let activeGapForDrawing = null;
+
     function updateGapListUI() {
       const container = document.getElementById('gapsList');
       document.getElementById('gapCount').innerText = detectedGaps.length;
@@ -2267,13 +2309,14 @@
 
         const timeStrA = recA.timestamp ? formatTimeCET(recA.timestamp) : `--:--:--`;
         const timeStrB = recB.timestamp ? formatTimeCET(recB.timestamp) : `--:--:--`;
+        const numDrawn = g.drawnWaypoints ? g.drawnWaypoints.length : 0;
 
         const card = document.createElement('div');
-        card.className = 'item-card';
+        card.className = `item-card ${g.active ? 'active' : ''}`;
         card.innerHTML = `
           <div class="item-header">
             <div class="item-title">
-              <i class="fa-solid fa-vector-square" style="color:var(--accent-amber);"></i>
+              <input type="checkbox" ${g.active ? 'checked' : ''} onchange="toggleGapActive(${g.id}, this.checked)">
               <span>Mezera #${g.id} (Zapomenutý restart)</span>
             </div>
             <span style="font-size:0.75rem; color:var(--accent-amber); font-weight:700;">${durMin} min / ${Math.round(g.distGapM)}m</span>
@@ -2285,15 +2328,48 @@
             </div>
             <div style="font-size:0.73rem; color:var(--text-muted); display:flex; justify-content:space-between; margin-top:2px;">
               <span>Body A: ${g.startIdx} &rarr; B: ${g.endIdx}</span>
-              <span>Přímka: ${Math.round(g.distGapM)} m</span>
+              <span style="color:${numDrawn > 0 ? '#10b981' : 'var(--text-muted)'}; font-weight:700;">
+                ${numDrawn > 0 ? `✏️ Dokresleno ${numDrawn} bodů` : 'Nevyplněno'}
+              </span>
             </div>
+            <button type="button" class="btn" style="margin-top:6px; font-size:0.75rem; padding:4px 8px; justify-content:center; background:rgba(245,158,11,0.15); color:var(--accent-amber); border:1px solid rgba(245,158,11,0.3);" onclick="startDrawingForGap(${g.id})">
+              <i class="fa-solid fa-pen-ruler"></i> Dokreslit trasu na mapě
+            </button>
           </div>
         `;
-        card.onclick = () => focusOnGap(g);
+        card.onclick = (e) => {
+          if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
+            focusOnGap(g);
+          }
+        };
         container.appendChild(card);
       });
 
       renderGapsOnMap();
+    }
+
+    function toggleGapActive(id, checked) {
+      const g = detectedGaps.find(x => x.id === id);
+      if (g) {
+        g.active = checked;
+        updateGapListUI();
+      }
+    }
+
+    function startDrawingForGap(id) {
+      const g = detectedGaps.find(x => x.id === id);
+      if (!g) return;
+      activeGapForDrawing = g;
+      g.active = true;
+      focusOnGap(g);
+
+      if (g.drawnWaypoints && g.drawnWaypoints.length > 0) {
+        drawnRouteNodes = [...g.drawnWaypoints];
+      } else {
+        drawnRouteNodes = [];
+      }
+
+      if (!isDrawingMode) toggleDrawingTool(g);
     }
 
     function renderGapsOnMap() {
@@ -2344,17 +2420,24 @@
       map.fitBounds(bounds, { maxZoom: 18, padding: [60, 60] });
     }
 
-    function toggleDrawingTool() {
+    function toggleDrawingTool(gap) {
+      if (gap) activeGapForDrawing = gap;
       isDrawingMode = !isDrawingMode;
       const btn = document.getElementById('btnToggleDrawing');
+      const undoBtn = document.getElementById('btnUndoDrawing');
       const lbl = document.getElementById('lblDrawingBtn');
       const statusBox = document.getElementById('demStatusBox');
+
+      if (!drawingMarkersLayer) {
+        drawingMarkersLayer = L.layerGroup().addTo(map);
+      }
 
       if (isDrawingMode) {
         btn.classList.remove('btn-primary');
         btn.style.background = 'var(--accent-rose)';
         lbl.innerText = i18nData[currentLang].stopDrawing || 'Ukončit kreslení';
         statusBox.style.display = 'flex';
+        undoBtn.style.display = drawnRouteNodes.length > 0 ? 'inline-flex' : 'none';
         map.getContainer().style.cursor = 'crosshair';
         map.on('click', onMapClickDraw);
       } else {
@@ -2362,13 +2445,44 @@
         btn.style.background = '';
         lbl.innerText = i18nData[currentLang].startDrawing || 'Zapnout kreslicí nástroj';
         statusBox.style.display = 'none';
+        undoBtn.style.display = 'none';
         map.getContainer().style.cursor = '';
         map.off('click', onMapClickDraw);
       }
     }
 
+    function undoLastDrawnWaypoint() {
+      if (drawnRouteNodes.length === 0) return;
+      drawnRouteNodes.pop();
+
+      if (drawingMarkersLayer) {
+        const layers = drawingMarkersLayer.getLayers();
+        if (layers.length > 0) drawingMarkersLayer.removeLayer(layers[layers.length - 1]);
+      }
+      if (drawingPolyline) {
+        drawingPolyline.setLatLngs(drawnRouteNodes);
+      }
+      if (activeGapForDrawing) {
+        activeGapForDrawing.drawnWaypoints = [...drawnRouteNodes];
+        updateGapListUI();
+      }
+      if (drawnRouteNodes.length === 0) {
+        document.getElementById('btnUndoDrawing').style.display = 'none';
+      }
+    }
+
     function onMapClickDraw(e) {
       drawnRouteNodes.push(e.latlng);
+      document.getElementById('btnUndoDrawing').style.display = 'inline-flex';
+
+      const nodeNum = drawnRouteNodes.length;
+      const icon = L.divIcon({
+        className: 'custom-div-icon',
+        html: `<div class="marker-badge" style="background:#f59e0b; color:#fff; border-radius:50%; font-size:11px; width:22px; height:22px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 6px rgba(0,0,0,0.5);">${nodeNum}</div>`,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+      });
+      L.marker(e.latlng, { icon: icon }).addTo(drawingMarkersLayer);
 
       if (!drawingPolyline) {
         drawingPolyline = L.polyline([e.latlng], {
@@ -2378,6 +2492,12 @@
         }).addTo(map);
       } else {
         drawingPolyline.addLatLng(e.latlng);
+      }
+
+      if (activeGapForDrawing) {
+        activeGapForDrawing.drawnWaypoints = [...drawnRouteNodes];
+        activeGapForDrawing.active = true;
+        updateGapListUI();
       }
     }
 

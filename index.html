@@ -1218,13 +1218,7 @@
       if ('showDirectoryPicker' in window) {
         window.showDirectoryPicker().then(async dirHandle => {
           scannedBatchFiles = [];
-          for await (const entry of dirHandle.values()) {
-            if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.fit')) {
-              const file = await entry.getFile();
-              const buf = await file.arrayBuffer();
-              parseBatchFileEntry(buf, file.name);
-            }
-          }
+          await scanDirectoryHandleRecursive(dirHandle);
           finishBatchScan();
         }).catch(err => {
           if (err.name !== 'AbortError') document.getElementById('folderInput').click();
@@ -1234,24 +1228,45 @@
       }
     }
 
+    async function scanDirectoryHandleRecursive(dirHandle) {
+      for await (const entry of dirHandle.values()) {
+        if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.fit')) {
+          try {
+            const file = await entry.getFile();
+            const buf = await file.arrayBuffer();
+            parseBatchFileEntry(buf, file.name);
+          } catch (e) {
+            console.warn('File read error:', entry.name, e);
+          }
+        } else if (entry.kind === 'directory') {
+          await scanDirectoryHandleRecursive(entry);
+        }
+      }
+    }
+
     function handleFolderSelect(evt) {
       const files = evt.target.files;
       if (!files || files.length === 0) return;
       scannedBatchFiles = [];
 
-      let loadedCount = 0;
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (file.name.toLowerCase().endsWith('.fit')) {
-          const reader = new FileReader();
-          reader.onload = function(e) {
-            parseBatchFileEntry(e.target.result, file.name);
-            loadedCount++;
-            if (loadedCount === files.length) finishBatchScan();
-          };
-          reader.readAsArrayBuffer(file);
-        }
+      const fitFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.fit'));
+      if (fitFiles.length === 0) {
+        alert('Ve složce nebyly nalezeny žádné soubory s příponou .FIT');
+        return;
       }
+
+      let loadedCount = 0;
+      fitFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          parseBatchFileEntry(e.target.result, file.name);
+          loadedCount++;
+          if (loadedCount === fitFiles.length) {
+            finishBatchScan();
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      });
     }
 
     function handleFileSelect(evt) {
@@ -1493,7 +1508,7 @@
                 idx += field.size;
               }
               if (def.devFields) {
-                for (const df of df.devFields) idx += df.size;
+                for (const df of def.devFields) idx += df.size;
               }
 
               const gNum = def.globalMsg;

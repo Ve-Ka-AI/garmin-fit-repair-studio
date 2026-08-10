@@ -865,8 +865,13 @@
             <span id="actName" data-i18n="noFileLoaded" style="font-weight:800; font-size:0.95rem;">Žádná aktivita načtena</span>
             <span id="actDate" style="font-size:0.75rem; color:var(--text-muted);">--.--.----</span>
           </div>
-          <div id="actSportBadge" class="badge-flag badge-clean" style="display:none; font-size:0.75rem; font-weight:700;">
-            🏃 Běh
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:2px;">
+            <div id="actSportBadge" class="badge-flag badge-clean" style="display:none; font-size:0.75rem; font-weight:700;">
+              🏃 Běh
+            </div>
+            <div id="actRecModeBadge" class="badge-flag" style="display:none; font-size:0.75rem; font-weight:700; background:rgba(168,85,247,0.18); color:var(--accent-purple); border:1px solid rgba(168,85,247,0.3);">
+              ⏱️ Záznam: Po vteřině
+            </div>
           </div>
         </div>
         <div class="stats-grid">
@@ -2314,6 +2319,22 @@
       } else {
         document.getElementById('actSportBadge').style.display = 'none';
       }
+
+      // Compute average recording interval to detect Smart vs Every-Second recording mode!
+      let intervals = [];
+      for (let i = 1; i < records.length; i++) {
+        const dt = records[i].timestamp - records[i-1].timestamp;
+        if (dt > 0 && dt < 120) intervals.push(dt);
+      }
+      const avgStepSec = intervals.length > 0 ? (intervals.reduce((a, b) => a + b, 0) / intervals.length) : 1;
+      const isEverySecond = avgStepSec <= 1.45;
+
+      const modeText = isEverySecond ? 
+        (currentLang === 'cs' ? '⏱️ Záznam: Po vteřině' : '⏱️ Mode: 1-Second') : 
+        (currentLang === 'cs' ? '🧠 Záznam: Smart (Chytrý)' : '🧠 Mode: Smart');
+
+      document.getElementById('actRecModeBadge').innerText = modeText;
+      document.getElementById('actRecModeBadge').style.display = 'inline-flex';
     }
 
     // --- RECONSTRUCTION & EXPORT ENGINE ---

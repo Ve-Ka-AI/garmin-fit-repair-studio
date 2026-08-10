@@ -1735,13 +1735,22 @@
       let i = 0;
       while (i < n - 1) {
         let j = i + 1;
+        const centerLat = recs[i].lat;
+        const centerLng = recs[i].lng;
+        let totalPathDist = 0;
+
         while (j < n) {
-          const d = calcHaversine(recs[i].lat, recs[i].lng, recs[j].lat, recs[j].lng);
-          if (d > 30.0) break;
+          const stepDist = calcHaversine(recs[j - 1].lat, recs[j - 1].lng, recs[j].lat, recs[j].lng);
+          const dFromCenter = calcHaversine(centerLat, centerLng, recs[j].lat, recs[j].lng);
+          if (dFromCenter > 35.0) break;
+          totalPathDist += stepDist;
           j++;
         }
+
         const dur = recs[j - 1].timestamp - recs[i].timestamp;
-        if (dur >= 180 && (j - i) > 5) {
+        const avgSpdKmh = dur > 0 ? (totalPathDist / 1000.0) / (dur / 3600.0) : 0;
+
+        if (dur >= 180 && avgSpdKmh < 3.2 && totalPathDist >= 45.0 && (j - i) > 5) {
           count++;
           i = j;
         } else {
@@ -1778,14 +1787,27 @@
 
       while (i < n - 1) {
         let j = i + 1;
+        const centerLat = records[i].lat;
+        const centerLng = records[i].lng;
+        let totalPathDist = 0;
+
         while (j < n) {
-          const distBetween = calcHaversine(records[i].lat, records[i].lng, records[j].lat, records[j].lng);
-          if (distBetween > radiusMeters) break;
+          const stepDist = calcHaversine(records[j - 1].lat, records[j - 1].lng, records[j].lat, records[j].lng);
+          const dFromCenter = calcHaversine(centerLat, centerLng, records[j].lat, records[j].lng);
+          if (dFromCenter > radiusMeters) break;
+          totalPathDist += stepDist;
           j++;
         }
 
         const duration = records[j - 1].timestamp - records[i].timestamp;
-        if (duration >= minDurationSec && (j - i) > 5) {
+        const avgSpdKmh = duration > 0 ? (totalPathDist / 1000.0) / (duration / 3600.0) : 0;
+
+        // Conditions for REAL stationary tangle:
+        // 1. All points stayed strictly bounded inside radius (confinement)
+        // 2. Duration >= minDurationSec (e.g. 3 min)
+        // 3. Average movement speed inside cluster < 3.2 km/h (resting/drift speed)
+        // 4. Total path distance >= 1.2 * radius (chaotic wandering/jitter inside spot)
+        if (duration >= minDurationSec && avgSpdKmh < 3.2 && totalPathDist >= (radiusMeters * 1.2) && (j - i) > 5) {
           detectedTangles.push({
             id: tangleId++,
             startIdx: i,

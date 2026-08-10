@@ -2116,7 +2116,12 @@
 
     function focusOnTangle(t) {
       const startRec = records[t.startIdx];
-      map.setView([startRec.lat, startRec.lng], 17);
+      const endRec = records[t.endIdx];
+      const bounds = L.latLngBounds([
+        [startRec.lat, startRec.lng],
+        [endRec.lat, endRec.lng]
+      ]);
+      map.fitBounds(bounds, { maxZoom: 18, padding: [60, 60] });
     }
 
     function updateLiveSavingsUI() {
@@ -2150,7 +2155,10 @@
             endIdx: i + 1,
             timeGapSec: dt,
             distGapM: dd,
-            drawnWaypoints: []
+            drawnWaypoints: [],
+            markerA: null,
+            markerB: null,
+            gapPolyline: null
           });
         }
       }
@@ -2169,26 +2177,87 @@
 
       container.innerHTML = '';
       detectedGaps.forEach(g => {
+        const recA = records[g.startIdx];
+        const recB = records[g.endIdx];
         const durMin = Math.floor(g.timeGapSec / 60);
+
+        const timeStrA = recA.timestamp ? formatTimeCET(recA.timestamp) : `--:--:--`;
+        const timeStrB = recB.timestamp ? formatTimeCET(recB.timestamp) : `--:--:--`;
+
         const card = document.createElement('div');
         card.className = 'item-card';
         card.innerHTML = `
           <div class="item-header">
             <div class="item-title">
-              <i class="fa-solid fa-straight-line" style="color:var(--accent-amber);"></i>
-              <span>Mezera #${g.id}</span>
+              <i class="fa-solid fa-vector-square" style="color:var(--accent-amber);"></i>
+              <span>Mezera #${g.id} (Zapomenutý restart)</span>
             </div>
             <span style="font-size:0.75rem; color:var(--accent-amber); font-weight:700;">${durMin} min / ${Math.round(g.distGapM)}m</span>
+          </div>
+          <div class="item-meta" style="flex-direction:column; gap:3px; margin-top:4px;">
+            <div style="font-size:0.76rem; color:#fff; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
+              <span><i class="fa-solid fa-circle-pause" style="color:var(--accent-amber); margin-right:4px;"></i><strong>Pauza A:</strong> ${timeStrA}</span>
+              <span><i class="fa-solid fa-circle-play" style="color:var(--accent-green); margin-right:4px;"></i><strong>Restart B:</strong> ${timeStrB}</span>
+            </div>
+            <div style="font-size:0.73rem; color:var(--text-muted); display:flex; justify-content:space-between; margin-top:2px;">
+              <span>Body A: ${g.startIdx} &rarr; B: ${g.endIdx}</span>
+              <span>Přímka: ${Math.round(g.distGapM)} m</span>
+            </div>
           </div>
         `;
         card.onclick = () => focusOnGap(g);
         container.appendChild(card);
       });
+
+      renderGapsOnMap();
+    }
+
+    function renderGapsOnMap() {
+      detectedGaps.forEach(g => {
+        if (g.markerA) map.removeLayer(g.markerA);
+        if (g.markerB) map.removeLayer(g.markerB);
+        if (g.gapPolyline) map.removeLayer(g.gapPolyline);
+
+        const recA = records[g.startIdx];
+        const recB = records[g.endIdx];
+
+        const gapPoly = L.polyline([[recA.lat, recA.lng], [recB.lat, recB.lng]], {
+          color: '#f59e0b',
+          weight: 3,
+          dashArray: '8, 8',
+          opacity: 0.9
+        }).addTo(map);
+        g.gapPolyline = gapPoly;
+
+        const iconA = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div class="marker-badge marker-gap" title="Pauza A"><i class="fa-solid fa-pause"></i></div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+        const markerA = L.marker([recA.lat, recA.lng], { icon: iconA }).addTo(map);
+
+        const iconB = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div class="marker-badge marker-a" title="Restart B"><i class="fa-solid fa-play"></i></div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+        const markerB = L.marker([recB.lat, recB.lng], { icon: iconB }).addTo(map);
+
+        g.markerA = markerA;
+        g.markerB = markerB;
+      });
     }
 
     function focusOnGap(g) {
       const startRec = records[g.startIdx];
-      map.setView([startRec.lat, startRec.lng], 16);
+      const endRec = records[g.endIdx];
+      const bounds = L.latLngBounds([
+        [startRec.lat, startRec.lng],
+        [endRec.lat, endRec.lng]
+      ]);
+      map.fitBounds(bounds, { maxZoom: 18, padding: [60, 60] });
     }
 
     function toggleDrawingTool() {

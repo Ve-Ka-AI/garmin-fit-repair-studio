@@ -1,0 +1,1886 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Garmin FIT Repair Studio</title>
+  <meta name="description" content="Pokročilý klientský nástroj pro grafickou opravu a úpravu .FIT souborů Garmin (odstraňování GPS klubek a doplňování chybějících tras).">
+
+  <!-- Google Fonts: Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- CDN fallback for fit-parser -->
+  <script src="https://cdn.jsdelivr.net/npm/fit-parser@1.9.0/dist/fit-parser.min.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #070a12;
+      --card-bg: rgba(17, 24, 39, 0.75);
+      --card-bg-hover: rgba(31, 41, 55, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-border-glow: rgba(56, 189, 248, 0.35);
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --primary-glow: rgba(56, 189, 248, 0.2);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-rose: #f43f5e;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-purple: #a855f7;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      background-image:
+        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(244, 63, 94, 0.1) 0px, transparent 50%),
+        radial-gradient(at 50% 100%, rgba(168, 85, 247, 0.08) 0px, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    h1, h2, h3, h4, .font-heading {
+      font-family: 'Outfit', sans-serif;
+    }
+
+    /* Top Bar Header */
+    header {
+      height: 64px;
+      padding: 0 1.5rem;
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1000;
+      flex-shrink: 0;
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #38bdf8, #f43f5e);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      color: #fff;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
+    }
+
+    .brand-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 30%, var(--primary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .privacy-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 20px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* Module Selector Tabs */
+    .module-tabs {
+      display: flex;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      gap: 4px;
+    }
+
+    .tab-btn {
+      padding: 8px 18px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      font-family: 'Outfit', sans-serif;
+      color: var(--text-muted);
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+      color: #070a12;
+      box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+      font-weight: 700;
+    }
+
+    .tab-btn:hover:not(.active) {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Header Actions */
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--card-border);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #0284c7);
+      color: #070a12;
+      border: none;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #7dd3fc, var(--primary));
+      transform: translateY(-1px);
+    }
+
+    .btn-export {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #ffffff;
+      border: none;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-export:hover {
+      background: linear-gradient(135deg, #34d399, #10b981);
+      transform: translateY(-1px);
+    }
+
+    .lang-switcher {
+      display: flex;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 2px;
+    }
+
+    .lang-btn {
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .lang-btn.active {
+      background: var(--primary);
+      color: #070a12;
+    }
+
+    /* Main Workspace Layout */
+    .app-workspace {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 64px);
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Left Sidebar Panel */
+    .sidebar {
+      width: 390px;
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-right: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1.25rem;
+      overflow-y: auto;
+      flex-shrink: 0;
+      z-index: 500;
+    }
+
+    .sidebar::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+    }
+
+    .card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 1.1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-main);
+    }
+
+    /* Controls & Sliders */
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .control-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .slider {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #1e293b;
+      outline: none;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    /* Stats Overview Badge Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .stat-box {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 10px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stat-val {
+      font-size: 1.1rem;
+      font-weight: 700;
+      font-family: 'Outfit', sans-serif;
+      color: #fff;
+    }
+
+    .stat-val.highlight-rose { color: var(--accent-rose); }
+    .stat-val.highlight-green { color: var(--accent-green); }
+    .stat-val.highlight-amber { color: var(--accent-amber); }
+
+    /* Items List (Tangles / Gaps) */
+    .item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    .item-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .item-card:hover {
+      border-color: var(--primary);
+      background: rgba(56, 189, 248, 0.05);
+    }
+
+    .item-card.active {
+      border-color: var(--accent-rose);
+      background: rgba(244, 63, 94, 0.1);
+    }
+
+    .item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .item-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .item-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Live Savings Tooltip Box */
+    .live-savings-box {
+      background: linear-gradient(135deg, rgba(244, 63, 94, 0.15), rgba(168, 85, 247, 0.15));
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      padding: 10px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.82rem;
+      color: #fecdd3;
+    }
+
+    .live-savings-box i {
+      font-size: 1.2rem;
+      color: var(--accent-rose);
+    }
+
+    /* Right Main Map & Chart Area */
+    .main-view {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      position: relative;
+    }
+
+    #map {
+      flex: 1;
+      width: 100%;
+      background: #0b0f19;
+      z-index: 1;
+    }
+
+    /* Bottom Chart Drawer */
+    .chart-drawer {
+      height: 200px;
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      border-top: 1px solid var(--card-border);
+      padding: 10px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .chart-container {
+      flex: 1;
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Dropzone Empty Overlay */
+    .dropzone-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(7, 10, 18, 0.88);
+      backdrop-filter: blur(12px);
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      transition: opacity 0.3s ease;
+    }
+
+    .dropzone-box {
+      width: 480px;
+      padding: 3rem 2rem;
+      border: 2px dashed rgba(56, 189, 248, 0.4);
+      border-radius: 24px;
+      background: rgba(17, 24, 39, 0.7);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.25rem;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+
+    .dropzone-box.dragover {
+      border-color: var(--primary);
+      background: rgba(56, 189, 248, 0.15);
+      transform: scale(1.02);
+    }
+
+    .dropzone-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(244, 63, 94, 0.2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2rem;
+      color: var(--primary);
+    }
+
+    /* Export Modal */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(10px);
+      z-index: 3000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 580px;
+      background: rgba(17, 24, 39, 0.95);
+      border: 1px solid var(--card-border-glow);
+      border-radius: 20px;
+      padding: 1.75rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #fff;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+
+    .notice-box {
+      background: rgba(56, 189, 248, 0.08);
+      border-left: 4px solid var(--primary);
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      line-height: 1.45;
+      color: #e2e8f0;
+    }
+
+    .instruction-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .instruction-step {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--primary);
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .step-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.82rem;
+    }
+
+    .step-title {
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* Custom Leaflet Map Markers & Popups */
+    .leaflet-popup-content-wrapper {
+      background: rgba(17, 24, 39, 0.95) !important;
+      color: #fff !important;
+      border: 1px solid rgba(255, 255, 255, 0.15) !important;
+      backdrop-filter: blur(10px);
+      border-radius: 12px !important;
+    }
+
+    .leaflet-popup-tip {
+      background: rgba(17, 24, 39, 0.95) !important;
+    }
+
+    .marker-badge {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+      border: 2px solid #fff;
+    }
+
+    .marker-a { background: var(--accent-green); }
+    .marker-b { background: var(--accent-rose); }
+    .marker-gap { background: var(--accent-amber); }
+
+    /* Hidden input */
+    #fileInput { display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar Header -->
+  <header>
+    <div class="brand-section">
+      <div class="brand-icon"><i class="fa-solid fa-scissors"></i></div>
+      <div>
+        <div class="brand-title">Garmin FIT Repair Studio</div>
+        <div class="privacy-badge"><i class="fa-solid fa-shield-halved"></i> <span data-i18n="privacyNotice">100% Client-Side / Zero Upload</span></div>
+      </div>
+    </div>
+
+    <!-- Module Selector Tabs -->
+    <div class="module-tabs">
+      <button type="button" class="tab-btn active" id="tabModule1" onclick="switchModule(1)">
+        <i class="fa-solid fa-scissors"></i> <span data-i18n="mod1Title">Odstraňovač klubka</span>
+      </button>
+      <button type="button" class="tab-btn" id="tabModule2" onclick="switchModule(2)">
+        <i class="fa-solid fa-pen-ruler"></i> <span data-i18n="mod2Title">Doplňovač trasy</span>
+      </button>
+    </div>
+
+    <!-- Header Actions & Language Switcher -->
+    <div class="header-actions">
+      <button type="button" class="btn" onclick="openFileSelector()">
+        <i class="fa-solid fa-folder-open"></i> <span data-i18n="btnLoadFit">Načíst FIT</span>
+      </button>
+      <button type="button" class="btn" onclick="loadDemoFile()">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> <span data-i18n="btnDemo">Demo</span>
+      </button>
+      <button type="button" class="btn btn-export" id="btnExportHeader" onclick="showExportModal()" disabled>
+        <i class="fa-solid fa-file-export"></i> <span data-i18n="btnExport">Exportovat FIT</span>
+      </button>
+
+      <div class="lang-switcher">
+        <button type="button" class="lang-btn active" id="langCS" onclick="setLanguage('cs')">CZ</button>
+        <button type="button" class="lang-btn" id="langEN" onclick="setLanguage('en')">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Workspace Container -->
+  <div class="app-workspace">
+    
+    <!-- Left Controls Sidebar -->
+    <aside class="sidebar">
+      
+      <!-- Activity Summary Header Card -->
+      <div class="card">
+        <div class="card-title">
+          <span id="actName" data-i18n="noFileLoaded">Žádná aktivita načtena</span>
+          <span id="actDate" style="font-size:0.75rem; color:var(--text-muted);">--.--.----</span>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span class="stat-label" data-i18n="statDistance">Vzdálenost</span>
+            <span class="stat-val" id="statDistance">0.0 km</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label" data-i18n="statTime">Čas v pohybu</span>
+            <span class="stat-val" id="statTime">00:00:00</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label" data-i18n="statAvgSpeed">Prům. Rychlost</span>
+            <span class="stat-val" id="statAvgSpeed">0.0 km/h</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label" data-i18n="statAvgHr">Prům. Tep</span>
+            <span class="stat-val" id="statAvgHr">-- bpm</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODULE 1 CONTROLS: GPS DRIFT CLEANER -->
+      <div id="panelModule1" class="card">
+        <div class="card-title">
+          <span><i class="fa-solid fa-sliders" style="color:var(--primary);"></i> <span data-i18n="tangleSensitivity">Citlivost detekce klubka</span></span>
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span data-i18n="lblRadius">Poloměr stání</span>
+            <span id="valRadius">30 m</span>
+          </div>
+          <input type="range" class="slider" id="inputRadius" min="10" max="50" value="30" oninput="updateDetectionSettings()">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span data-i18n="lblMinTime">Minimální čas stání</span>
+            <span id="valMinTime">3 min</span>
+          </div>
+          <input type="range" class="slider" id="inputMinTime" min="1" max="10" value="3" oninput="updateDetectionSettings()">
+        </div>
+
+        <!-- Live Savings Indicator Box -->
+        <div class="live-savings-box">
+          <i class="fa-solid fa-scissors"></i>
+          <div>
+            <div style="font-weight:700;" data-i18n="liveSavingsTitle">Živý odhad úspory</div>
+            <div id="liveSavingsText" style="font-size:0.8rem;">Vyříznuto: 0 min a 0 m</div>
+          </div>
+        </div>
+
+        <!-- Detected Tangles List -->
+        <div class="card-title" style="margin-top:6px;">
+          <span><i class="fa-solid fa-bullseye" style="color:var(--accent-rose);"></i> <span data-i18n="foundTangles">Nalezená klubka</span> (<span id="tangleCount">0</span>)</span>
+        </div>
+        <div class="item-list" id="tanglesList">
+          <!-- Populated by JS -->
+          <div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding:12px;" data-i18n="loadFitFirst">
+            Načtěte .FIT soubor pro detekci klubek.
+          </div>
+        </div>
+      </div>
+
+      <!-- MODULE 2 CONTROLS: MISSING ROUTE INTERPOLATOR -->
+      <div id="panelModule2" class="card" style="display:none;">
+        <div class="card-title">
+          <span><i class="fa-solid fa-pen-ruler" style="color:var(--accent-amber);"></i> <span data-i18n="mod2Title">Doplňovač trasy</span></span>
+        </div>
+
+        <p style="font-size:0.8rem; color:var(--text-muted); line-height:1.4;" data-i18n="mod2Desc">
+          Aplikace automaticky zjišťuje nepřirozené přímky. Kliknutím na mapu můžete dokreslit chybějící reálnou trasu a dopočítat plynulá data.
+        </p>
+
+        <button type="button" class="btn btn-primary" id="btnToggleDrawing" onclick="toggleDrawingTool()" style="width:100%; justify-content:center;">
+          <i class="fa-solid fa-pencil"></i> <span id="lblDrawingBtn" data-i18n="startDrawing">Zapnout kreslicí nástroj</span>
+        </button>
+
+        <div class="card-title" style="margin-top:8px;">
+          <span><i class="fa-solid fa-vector-square" style="color:var(--accent-amber);"></i> <span data-i18n="detectedGaps">Detekované mezery</span> (<span id="gapCount">0</span>)</span>
+        </div>
+        <div class="item-list" id="gapsList">
+          <!-- Populated by JS -->
+          <div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding:12px;" data-i18n="noGapsFound">
+            Žádné přímkové mezery nedetekovány.
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- Center/Right View: Leaflet Map & Elevation Chart -->
+    <main class="main-view">
+      <div id="map"></div>
+
+      <!-- Bottom Chart Drawer -->
+      <div class="chart-drawer">
+        <div class="chart-header">
+          <span><i class="fa-solid fa-chart-area" style="color:var(--primary);"></i> <span data-i18n="chartTitle">Výškový profil a rychlost</span></span>
+          <span id="chartCursorInfo">-- m | -- km/h</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="elevationChart"></canvas>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Dropzone Empty State Overlay -->
+  <div class="dropzone-overlay" id="dropzoneOverlay">
+    <div class="dropzone-box" id="dropzoneBox">
+      <div class="dropzone-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+      <div>
+        <h2 style="font-size:1.4rem; font-weight:800; color:#fff;" data-i18n="dropTitle">Přetáhněte sem Garmin .FIT soubor</h2>
+        <p style="font-size:0.88rem; color:var(--text-muted); margin-top:4px;" data-i18n="dropSubtitle">Aplikace opaví pokažená klubka a dopočítá chybějící trasy přímo v prohlížeči.</p>
+      </div>
+      <div style="display:flex; gap:12px; margin-top:8px;">
+        <button type="button" class="btn btn-primary" onclick="openFileSelector()">
+          <i class="fa-solid fa-folder-open"></i> <span data-i18n="btnSelectFile">Vybrat FIT soubor</span>
+        </button>
+        <button type="button" class="btn" onclick="loadDemoFile()">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> <span data-i18n="btnDemo">Načíst Demo</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Modal -->
+  <div class="modal-backdrop" id="exportModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title"><i class="fa-solid fa-file-export" style="color:var(--accent-green);"></i> <span data-i18n="exportModalTitle">Export opraveného FIT souboru</span></div>
+        <button type="button" class="modal-close" onclick="closeExportModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="notice-box">
+        <i class="fa-solid fa-circle-check" style="color:var(--accent-green); margin-right:6px;"></i>
+        <strong data-i18n="dupBypassNoticeTitle">Bypass duplicity aktivní:</strong>
+        <span data-i18n="dupBypassNoticeDesc">Hodnota time_created v hlavičce souboru byla posunuta o +1 sekundu. Garmin Connect přijme tento soubor bez chybové hlášky o duplicité!</span>
+      </div>
+
+      <div class="instruction-list">
+        <div class="instruction-step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title" data-i18n="step1Title">Doporučený postup</div>
+            <div style="color:var(--text-muted);" data-i18n="step1Desc">V Garmin Connect nejprve smažte původní pokaženou aktivitu a poté nahrajte tento nový opravený .fit soubor.</div>
+          </div>
+        </div>
+
+        <div class="instruction-step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title" data-i18n="step2Title">Alternativní postup</div>
+            <div style="color:var(--text-muted);" data-i18n="step2Desc">Nahrajte opravený soubor bez mazání původního — v účtu se objeví jako druhá samostatná aktivita pro srovnání.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:8px;">
+        <button type="button" class="btn" onclick="downloadGpxFile()">
+          <i class="fa-solid fa-route"></i> <span data-i18n="btnDownloadGpx">Stáhnout GPX</span>
+        </button>
+        <button type="button" class="btn btn-export" onclick="downloadFitFile()">
+          <i class="fa-solid fa-download"></i> <span data-i18n="btnDownloadFit">Stáhnout opravený .FIT</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="fileInput" accept=".fit" onchange="handleFileSelect(event)">
+
+  <!-- JavaScript Code Base -->
+  <script>
+    // --- i18n Translation Dictionary ---
+    const i18nData = {
+      cs: {
+        privacyNotice: "100% Klientské / Zero Upload",
+        mod1Title: "Odstraňovač klubka",
+        mod2Title: "Doplňovač trasy",
+        btnLoadFit: "Načíst FIT",
+        btnDemo: "Demo",
+        btnExport: "Exportovat FIT",
+        noFileLoaded: "Žádná aktivita načtena",
+        statDistance: "Vzdálenost",
+        statTime: "Čas v pohybu",
+        statAvgSpeed: "Prům. Rychlost",
+        statAvgHr: "Prům. Tep",
+        tangleSensitivity: "Citlivost detekce klubka",
+        lblRadius: "Poloměr stání",
+        lblMinTime: "Minimální čas stání",
+        liveSavingsTitle: "Živý odhad úspory",
+        foundTangles: "Nalezená klubka",
+        loadFitFirst: "Načtěte .FIT soubor pro detekci klubek.",
+        mod2Desc: "Aplikace automaticky zjišťuje nepřirozené přímky. Kliknutím na mapu můžete dokreslit chybějící reálnou trasu a dopočítat plynulá data.",
+        startDrawing: "Zapnout kreslicí nástroj",
+        stopDrawing: "Ukončit kreslení",
+        detectedGaps: "Detekované mezery",
+        noGapsFound: "Žádné přímkové mezery nedetekovány.",
+        chartTitle: "Výškový profil a rychlost",
+        dropTitle: "Přetáhněte sem Garmin .FIT soubor",
+        dropSubtitle: "Aplikace opraví pokažená klubka a dopočítá chybějící trasy přímo v prohlížeči.",
+        btnSelectFile: "Vybrat FIT soubor",
+        exportModalTitle: "Export opraveného FIT souboru",
+        dupBypassNoticeTitle: "Bypass duplicity aktivní:",
+        dupBypassNoticeDesc: "Hodnota time_created v hlavičce souboru byla posunuta o +1 sekundu. Garmin Connect přijme tento soubor bez chybové hlášky o duplicité!",
+        step1Title: "Doporučený postup",
+        step1Desc: "V Garmin Connect nejprve smažte původní pokaženou aktivitu a poté nahrajte tento nový opravený .fit soubor.",
+        step2Title: "Alternativní postup",
+        step2Desc: "Nahrajte opravený soubor bez mazání původního — v účtu se objeví jako druhá samostatná aktivita pro srovnání.",
+        btnDownloadGpx: "Stáhnout GPX",
+        btnDownloadFit: "Stáhnout opravený .FIT"
+      },
+      en: {
+        privacyNotice: "100% Client-Side / Zero Upload",
+        mod1Title: "GPS Drift Cleaner",
+        mod2Title: "Missing Route Interpolator",
+        btnLoadFit: "Load FIT",
+        btnDemo: "Demo",
+        btnExport: "Export FIT",
+        noFileLoaded: "No activity loaded",
+        statDistance: "Distance",
+        statTime: "Moving Time",
+        statAvgSpeed: "Avg Speed",
+        statAvgHr: "Avg HR",
+        tangleSensitivity: "Tangle Detection Sensitivity",
+        lblRadius: "Stationary Radius",
+        lblMinTime: "Min Stationary Time",
+        liveSavingsTitle: "Live Estimated Savings",
+        foundTangles: "Detected Tangles",
+        loadFitFirst: "Load a .FIT file to detect tangles.",
+        mod2Desc: "The app automatically flags unnatural straight lines. Click on the map to manually draw missing routes and recalculate smooth telemetry.",
+        startDrawing: "Enable Drawing Tool",
+        stopDrawing: "Finish Drawing",
+        detectedGaps: "Detected Gaps",
+        noGapsFound: "No straight line gaps detected.",
+        chartTitle: "Elevation Profile & Speed",
+        dropTitle: "Drag & Drop Garmin .FIT file here",
+        dropSubtitle: "Repair stationary drift tangles and interpolate missing routes completely inside your browser.",
+        btnSelectFile: "Select FIT File",
+        exportModalTitle: "Export Repaired FIT File",
+        dupBypassNoticeTitle: "Duplicity Bypass Active:",
+        dupBypassNoticeDesc: "Header time_created value shifted by +1 second. Garmin Connect will accept this file without throwing a duplicate error!",
+        step1Title: "Recommended Method",
+        step1Desc: "Delete original broken activity in Garmin Connect first, then upload this new repaired .fit file.",
+        step2Title: "Alternative Method",
+        step2Desc: "Upload repaired file directly without deleting original — it will appear as a 2nd activity for comparison.",
+        btnDownloadGpx: "Download GPX",
+        btnDownloadFit: "Download Repaired .FIT"
+      }
+    };
+
+    let currentLang = 'cs';
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      document.getElementById('langCS').classList.toggle('active', lang === 'cs');
+      document.getElementById('langEN').classList.toggle('active', lang === 'en');
+      
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (i18nData[lang][key]) {
+          el.innerText = i18nData[lang][key];
+        }
+      });
+      updateTangleListUI();
+      updateLiveSavingsUI();
+    }
+
+    // --- State Variables ---
+    let activeModule = 1; // 1 = Drift Cleaner, 2 = Missing Route Interpolator
+    let fitArrayBuffer = null;
+    let rawFitData = null;
+    let records = []; // parsed trackpoint records [{timestamp, lat, lng, alt, hr, cadence, speed, dist, ...}]
+    let fileIdHeader = {};
+    let sessionData = {};
+
+    let detectedTangles = []; // [{id, startIdx, endIdx, active, markerA, markerB, circlePoly}]
+    let detectedGaps = []; // [{id, startIdx, endIdx, drawnPoints:[]}]
+
+    let map = null;
+    let trackPolyline = null;
+    let repairedPolyline = null;
+    let drawingPolyline = null;
+    let chart = null;
+    let isDrawingMode = false;
+    let currentGapDrawing = null;
+
+    const GARMIN_EPOCH_OFFSET = 631065600; // seconds between 1970-01-01 and 1989-12-31T00:00:00Z
+
+    // Initialize Leaflet Map and UI on Load
+    window.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      initChart();
+      setupDragAndDrop();
+    });
+
+    function initMap() {
+      map = L.map('map', { zoomControl: true }).setView([49.8, 15.5], 8);
+
+      // CartoDB Dark Matter tile layer
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+        subdomains: 'abcd',
+        maxZoom: 19
+      }).addTo(map);
+    }
+
+    function initChart() {
+      const ctx = document.getElementById('elevationChart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Výška (m)',
+              data: [],
+              borderColor: '#38bdf8',
+              backgroundColor: 'rgba(56, 189, 248, 0.15)',
+              fill: true,
+              tension: 0.2,
+              yAxisID: 'y'
+            },
+            {
+              label: 'Rychlost (km/h)',
+              data: [],
+              borderColor: '#f59e0b',
+              borderDash: [4, 4],
+              fill: false,
+              tension: 0.2,
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', maxTicksLimit: 8 } },
+            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#38bdf8' } },
+            y1: { position: 'right', grid: { display: false }, ticks: { color: '#f59e0b' } }
+          }
+        }
+      });
+    }
+
+    // --- Module Switcher ---
+    function switchModule(modNum) {
+      activeModule = modNum;
+      document.getElementById('tabModule1').classList.toggle('active', modNum === 1);
+      document.getElementById('tabModule2').classList.toggle('active', modNum === 2);
+      document.getElementById('panelModule1').style.display = modNum === 1 ? 'flex' : 'none';
+      document.getElementById('panelModule2').style.display = modNum === 2 ? 'flex' : 'none';
+      if (modNum !== 2 && isDrawingMode) {
+        toggleDrawingTool();
+      }
+    }
+
+    // --- Drag & Drop & File Loading ---
+    function openFileSelector() {
+      document.getElementById('fileInput').click();
+    }
+
+    function handleFileSelect(evt) {
+      const file = evt.target.files[0];
+      if (file) loadFitFileBuffer(file);
+    }
+
+    function setupDragAndDrop() {
+      const dropzone = document.getElementById('dropzoneOverlay');
+      const box = document.getElementById('dropzoneBox');
+
+      window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        box.classList.add('dragover');
+      });
+
+      window.addEventListener('dragleave', (e) => {
+        if (e.target === dropzone) box.classList.remove('dragover');
+      });
+
+      window.addEventListener('drop', (e) => {
+        e.preventDefault();
+        box.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          const file = e.dataTransfer.files[0];
+          if (file.name.toLowerCase().endsWith('.fit')) {
+            loadFitFileBuffer(file);
+          }
+        }
+      });
+    }
+
+    function loadFitFileBuffer(file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        fitArrayBuffer = e.target.result;
+        parseAndProcessFit(fitArrayBuffer, file.name);
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // Load Demo File
+    function loadDemoFile() {
+      // Create synthesized realistic FIT track with stationary tangle & straight gap
+      generateDemoFitTrack();
+    }
+
+    // --- NATIVE BINARY FIT PARSER ENGINE ---
+    function parseAndProcessFit(buffer, filename) {
+      try {
+        const view = new DataView(buffer);
+        const data = new Uint8Array(buffer);
+        if (data.length < 14) return alert('Neplatný FIT soubor (příliš krátký).');
+
+        const headerSize = data[0];
+        const isFitMagic = (data[8] === 46 && data[9] === 70 && data[10] === 73 && data[11] === 84); // '.FIT'
+        if (!isFitMagic) {
+          console.warn('FIT Magic missing, attempting fallback parse.');
+        }
+
+        const dataSize = view.getUint32(4, true);
+        const bodyEnd = Math.min(headerSize + dataSize, data.length);
+
+        records = [];
+        fileIdHeader = { manufacturer: 1, product: 1, timeCreated: Math.round(Date.now()/1000) - GARMIN_EPOCH_OFFSET };
+        sessionData = {};
+        const defs = {};
+
+        let idx = headerSize;
+        while (idx < bodyEnd) {
+          const hdr = data[idx++];
+          const isCompressed = (hdr & 0x80) !== 0;
+
+          if (!isCompressed) {
+            const isDef = (hdr & 0x40) !== 0;
+            const hasDev = (hdr & 0x20) !== 0;
+            const localId = hdr & 0x0F;
+
+            if (isDef) {
+              if (idx + 5 > bodyEnd) break;
+              idx++; // reserved
+              const arch = data[idx++];
+              const isLittle = (arch === 0);
+              const globalMsg = view.getUint16(idx, isLittle);
+              idx += 2;
+              const numFields = data[idx++];
+              const fields = [];
+              for (let f = 0; f < numFields; f++) {
+                if (idx + 3 > bodyEnd) break;
+                fields.push({ num: data[idx], size: data[idx + 1], type: data[idx + 2] });
+                idx += 3;
+              }
+              let devFields = [];
+              if (hasDev) {
+                const numDev = data[idx++];
+                for (let d = 0; d < numDev; d++) {
+                  devFields.push({ num: data[idx], size: data[idx + 1], idx: data[idx + 2] });
+                  idx += 3;
+                }
+              }
+              defs[localId] = { globalMsg, isLittle, fields, devFields };
+            } else {
+              const def = defs[localId];
+              if (!def) continue;
+              const isLittle = def.isLittle;
+              const msgData = {};
+              for (const field of def.fields) {
+                if (idx + field.size > data.length) break;
+                msgData[field.num] = { raw: data.subarray(idx, idx + field.size), size: field.size };
+                idx += field.size;
+              }
+              if (def.devFields) {
+                for (const df of def.devFields) {
+                  idx += df.size;
+                }
+              }
+
+              const gNum = def.globalMsg;
+              if (gNum === 0) { // file_id
+                for (const fn in msgData) {
+                  const { raw, size } = msgData[fn];
+                  const dv = new DataView(raw.buffer, raw.byteOffset, size);
+                  if (fn == 4 && size === 4) fileIdHeader.timeCreated = dv.getUint32(0, isLittle);
+                }
+              } else if (gNum === 20) { // record
+                const rec = {};
+                for (const fn in msgData) {
+                  const { raw, size } = msgData[fn];
+                  const dv = new DataView(raw.buffer, raw.byteOffset, size);
+                  if (fn == 253 && size === 4) rec.timestamp = dv.getUint32(0, isLittle);
+                  else if (fn == 0 && size === 4) rec.lat = dv.getInt32(0, isLittle) * (180.0 / 2147483648.0);
+                  else if (fn == 1 && size === 4) rec.lng = dv.getInt32(0, isLittle) * (180.0 / 2147483648.0);
+                  else if ((fn == 78 || fn == 2) && size >= 2) {
+                    rec.alt = (size === 4 ? dv.getUint32(0, isLittle) : dv.getUint16(0, isLittle)) / 5.0 - 500.0;
+                  }
+                  else if (fn == 3 && size === 1) rec.hr = raw[0];
+                  else if (fn == 4 && size === 1) rec.cadence = raw[0];
+                  else if ((fn == 73 || fn == 6) && size >= 2) {
+                    rec.speed = (size === 4 ? dv.getUint32(0, isLittle) : dv.getUint16(0, isLittle)) / 1000.0 * 3.6; // km/h
+                  }
+                  else if ((fn == 5 || fn == 77) && size === 4) rec.dist = dv.getUint32(0, isLittle) / 100.0;
+                }
+                if (rec.lat && rec.lng) records.push(rec);
+              }
+            }
+          }
+        }
+
+        if (records.length === 0) {
+          alert('V FIT souboru nebyly nalezeny žádné GPS body.');
+          return;
+        }
+
+        // Hide Dropzone
+        document.getElementById('dropzoneOverlay').style.opacity = '0';
+        setTimeout(() => document.getElementById('dropzoneOverlay').style.display = 'none', 300);
+        document.getElementById('btnExportHeader').disabled = false;
+
+        document.getElementById('actName').innerText = filename || 'Garmin Aktivita';
+        if (records[0].timestamp) {
+          const dt = new Date((records[0].timestamp + GARMIN_EPOCH_OFFSET) * 1000);
+          document.getElementById('actDate').innerText = dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        }
+
+        processActivityData();
+
+      } catch (err) {
+        console.error('Fit Parser Error:', err);
+        alert('Chyba při dekódování FIT souboru: ' + err.message);
+      }
+    }
+
+    // --- Synthetic Demo Generator ---
+    function generateDemoFitTrack() {
+      records = [];
+      const baseLat = 49.8500, baseLng = 18.2500;
+      let curTime = Math.round(Date.now()/1000) - GARMIN_EPOCH_OFFSET;
+      let curDist = 0;
+
+      // Section 1: Normal moving track (100 points)
+      for (let i = 0; i < 100; i++) {
+        curTime += 2;
+        curDist += 5.5;
+        records.push({
+          timestamp: curTime,
+          lat: baseLat + i * 0.00015,
+          lng: baseLng + i * 0.0002,
+          alt: 250 + Math.sin(i / 10) * 15,
+          hr: 140 + Math.floor(Math.random() * 10),
+          cadence: 85 + Math.floor(Math.random() * 6),
+          speed: 10.0,
+          dist: curDist
+        });
+      }
+
+      // Section 2: Stationary Tangle / Drift (5 min stop with GPS wander)
+      const tangleStartIdx = records.length - 1;
+      const tCenterLat = records[tangleStartIdx].lat;
+      const tCenterLng = records[tangleStartIdx].lng;
+
+      for (let i = 0; i < 150; i++) {
+        curTime += 2; // 300 seconds total (5 min)
+        curDist += 0.8;
+        const angle = Math.random() * Math.PI * 2;
+        const rad = Math.random() * 0.00018; // ~15-20 meters wander
+        records.push({
+          timestamp: curTime,
+          lat: tCenterLat + Math.cos(angle) * rad,
+          lng: tCenterLng + Math.sin(angle) * rad,
+          alt: 252,
+          hr: 95, // resting HR during pause
+          cadence: 0,
+          speed: 0.5,
+          dist: curDist
+        });
+      }
+
+      // Section 3: Normal track again (80 points)
+      const lastRec = records[records.length - 1];
+      for (let i = 0; i < 80; i++) {
+        curTime += 2;
+        curDist += 6.0;
+        records.push({
+          timestamp: curTime,
+          lat: lastRec.lat + i * 0.00015,
+          lng: lastRec.lng + i * 0.0002,
+          alt: 252 + i * 0.5,
+          hr: 148,
+          cadence: 88,
+          speed: 10.8,
+          dist: curDist
+        });
+      }
+
+      // Section 4: Straight Line Gap (Forgotten unpause - 3 min jump over 800m)
+      const gapStartRec = records[records.length - 1];
+      curTime += 180;
+      curDist += 800;
+      records.push({
+        timestamp: curTime,
+        lat: gapStartRec.lat + 0.005,
+        lng: gapStartRec.lng + 0.006,
+        alt: 290,
+        hr: 152,
+        cadence: 90,
+        speed: 16.0,
+        dist: curDist
+      });
+
+      // Hide Dropzone
+      document.getElementById('dropzoneOverlay').style.opacity = '0';
+      setTimeout(() => document.getElementById('dropzoneOverlay').style.display = 'none', 300);
+      document.getElementById('btnExportHeader').disabled = false;
+
+      document.getElementById('actName').innerText = 'Garmin Demo Aktivita (Klubko + Mezera)';
+      document.getElementById('actDate').innerText = new Date().toLocaleDateString();
+
+      processActivityData();
+    }
+
+    // --- Main Activity Data Processing & Render ---
+    function processActivityData() {
+      if (records.length === 0) return;
+
+      // Render Base Map Track
+      renderMapTrack();
+      renderChartData();
+
+      // Run Detection Algorithms
+      runTangleDetection();
+      runGapDetection();
+
+      // Update Summary Stats
+      updateActivityStatsUI();
+    }
+
+    function renderMapTrack() {
+      if (trackPolyline) map.removeLayer(trackPolyline);
+
+      const latLngs = records.map(r => [r.lat, r.lng]);
+      trackPolyline = L.polyline(latLngs, {
+        color: '#38bdf8',
+        weight: 4,
+        opacity: 0.85
+      }).addTo(map);
+
+      map.fitBounds(trackPolyline.getBounds(), { padding: [40, 40] });
+    }
+
+    function renderChartData() {
+      const labels = records.map((r, i) => Math.round(r.dist || i * 10) + ' m');
+      const alts = records.map(r => r.alt || 0);
+      const speeds = records.map(r => r.speed || 0);
+
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = alts;
+      chart.data.datasets[1].data = speeds;
+      chart.update();
+    }
+
+    // --- MODULE 1: GPS DRIFT CLEANER ALGORITHM ---
+    function updateDetectionSettings() {
+      const r = document.getElementById('inputRadius').value;
+      const t = document.getElementById('inputMinTime').value;
+      document.getElementById('valRadius').innerText = r + ' m';
+      document.getElementById('valMinTime').innerText = t + ' min';
+      runTangleDetection();
+    }
+
+    function runTangleDetection() {
+      // Clear old Leaflet layers
+      detectedTangles.forEach(t => {
+        if (t.circlePoly) map.removeLayer(t.circlePoly);
+        if (t.markerA) map.removeLayer(t.markerA);
+        if (t.markerB) map.removeLayer(t.markerB);
+      });
+      detectedTangles = [];
+
+      const radiusMeters = parseFloat(document.getElementById('inputRadius').value);
+      const minDurationSec = parseFloat(document.getElementById('inputMinTime').value) * 60;
+
+      let n = records.length;
+      let i = 0;
+      let tangleId = 1;
+
+      while (i < n - 1) {
+        let j = i + 1;
+        let maxDistInWindow = 0;
+
+        while (j < n) {
+          const distBetween = calcHaversine(records[i].lat, records[i].lng, records[j].lat, records[j].lng);
+          if (distBetween > radiusMeters) break;
+          j++;
+        }
+
+        const duration = records[j - 1].timestamp - records[i].timestamp;
+        if (duration >= minDurationSec && (j - i) > 5) {
+          // Stationary cluster detected!
+          detectedTangles.push({
+            id: tangleId++,
+            startIdx: i,
+            endIdx: j - 1,
+            active: true,
+            circlePoly: null,
+            markerA: null,
+            markerB: null
+          });
+          i = j;
+        } else {
+          i++;
+        }
+      }
+
+      // Render Tangles on Map
+      renderTanglesOnMap();
+      updateTangleListUI();
+      updateLiveSavingsUI();
+    }
+
+    function renderTanglesOnMap() {
+      detectedTangles.forEach(t => {
+        const startRec = records[t.startIdx];
+        const endRec = records[t.endIdx];
+
+        // Draw red tangle zone circle
+        const circle = L.circle([startRec.lat, startRec.lng], {
+          color: '#f43f5e',
+          fillColor: '#f43f5e',
+          fillOpacity: 0.25,
+          radius: parseFloat(document.getElementById('inputRadius').value)
+        }).addTo(map);
+        t.circlePoly = circle;
+
+        // Custom A Marker (Entry)
+        const iconA = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div class="marker-badge marker-a">A</div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+        const markerA = L.marker([startRec.lat, startRec.lng], { icon: iconA, draggable: true }).addTo(map);
+        markerA.on('drag', (e) => onMarkerDrag(t, 'A', e.target.getLatLng()));
+
+        // Custom B Marker (Exit)
+        const iconB = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div class="marker-badge marker-b">B</div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+        const markerB = L.marker([endRec.lat, endRec.lng], { icon: iconB, draggable: true }).addTo(map);
+        markerB.on('drag', (e) => onMarkerDrag(t, 'B', e.target.getLatLng()));
+
+        t.markerA = markerA;
+        t.markerB = markerB;
+      });
+    }
+
+    // Handle interactive marker dragging A / B
+    function onMarkerDrag(tangle, markerType, latLng) {
+      // Find closest track record to dropped latLng
+      let minD = Infinity;
+      let closestIdx = tangle.startIdx;
+
+      const searchStart = Math.max(0, tangle.startIdx - 50);
+      const searchEnd = Math.min(records.length - 1, tangle.endIdx + 50);
+
+      for (let k = searchStart; k <= searchEnd; k++) {
+        const d = calcHaversine(latLng.lat, latLng.lng, records[k].lat, records[k].lng);
+        if (d < minD) {
+          minD = d;
+          closestIdx = k;
+        }
+      }
+
+      if (markerType === 'A') {
+        if (closestIdx < tangle.endIdx) tangle.startIdx = closestIdx;
+      } else {
+        if (closestIdx > tangle.startIdx) tangle.endIdx = closestIdx;
+      }
+
+      updateTangleListUI();
+      updateLiveSavingsUI();
+    }
+
+    function updateTangleListUI() {
+      const container = document.getElementById('tanglesList');
+      document.getElementById('tangleCount').innerText = detectedTangles.length;
+
+      if (detectedTangles.length === 0) {
+        container.innerHTML = `<div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding:12px;">Žádná stacionární klubka nedetekována.</div>`;
+        return;
+      }
+
+      container.innerHTML = '';
+      detectedTangles.forEach(t => {
+        const durationSec = records[t.endIdx].timestamp - records[t.startIdx].timestamp;
+        const distCutM = records[t.endIdx].dist - records[t.startIdx].dist;
+
+        const durMin = Math.floor(durationSec / 60);
+        const durSec = durationSec % 60;
+
+        const card = document.createElement('div');
+        card.className = `item-card ${t.active ? 'active' : ''}`;
+        card.innerHTML = `
+          <div class="item-header">
+            <div class="item-title">
+              <input type="checkbox" ${t.active ? 'checked' : ''} onchange="toggleTangleActive(${t.id}, this.checked)">
+              <span>Klubko #${t.id}</span>
+            </div>
+            <span style="font-size:0.75rem; color:var(--accent-rose); font-weight:700;">-${durMin}m ${durSec}s</span>
+          </div>
+          <div class="item-meta">
+            <span>Body A: ${t.startIdx} &rarr; B: ${t.endIdx}</span>
+            <span>Odmazáno: ${Math.round(distCutM)} m</span>
+          </div>
+        `;
+        card.onclick = (e) => {
+          if (e.target.tagName !== 'INPUT') focusOnTangle(t);
+        };
+        container.appendChild(card);
+      });
+    }
+
+    function toggleTangleActive(id, checked) {
+      const t = detectedTangles.find(x => x.id === id);
+      if (t) {
+        t.active = checked;
+        updateLiveSavingsUI();
+      }
+    }
+
+    function focusOnTangle(t) {
+      const startRec = records[t.startIdx];
+      map.setView([startRec.lat, startRec.lng], 17);
+    }
+
+    // Live Savings Indicator Calculator
+    function updateLiveSavingsUI() {
+      let totalTimeSec = 0;
+      let totalDistM = 0;
+
+      detectedTangles.filter(t => t.active).forEach(t => {
+        totalTimeSec += (records[t.endIdx].timestamp - records[t.startIdx].timestamp);
+        totalDistM += (records[t.endIdx].dist - records[t.startIdx].dist);
+      });
+
+      const m = Math.floor(totalTimeSec / 60);
+      const s = totalTimeSec % 60;
+      const text = `Vyříznuto: ${m} min ${s} s a ${Math.round(totalDistM)} metrů`;
+      document.getElementById('liveSavingsText').innerText = text;
+    }
+
+    // --- MODULE 2: MISSING ROUTE INTERPOLATOR ---
+    function runGapDetection() {
+      detectedGaps = [];
+      let gapId = 1;
+
+      for (let i = 0; i < records.length - 1; i++) {
+        const dt = records[i + 1].timestamp - records[i].timestamp;
+        const dd = calcHaversine(records[i].lat, records[i].lng, records[i + 1].lat, records[i + 1].lng);
+
+        if (dt >= 120 || dd >= 300) { // Gap > 2 min or straight line > 300m
+          detectedGaps.push({
+            id: gapId++,
+            startIdx: i,
+            endIdx: i + 1,
+            timeGapSec: dt,
+            distGapM: dd,
+            drawnPoints: []
+          });
+        }
+      }
+
+      updateGapListUI();
+    }
+
+    function updateGapListUI() {
+      const container = document.getElementById('gapsList');
+      document.getElementById('gapCount').innerText = detectedGaps.length;
+
+      if (detectedGaps.length === 0) {
+        container.innerHTML = `<div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding:12px;">Žádné přímkové mezery nedetekovány.</div>`;
+        return;
+      }
+
+      container.innerHTML = '';
+      detectedGaps.forEach(g => {
+        const durMin = Math.floor(g.timeGapSec / 60);
+        const card = document.createElement('div');
+        card.className = 'item-card';
+        card.innerHTML = `
+          <div class="item-header">
+            <div class="item-title">
+              <i class="fa-solid fa-straight-line" style="color:var(--accent-amber);"></i>
+              <span>Mezera #${g.id}</span>
+            </div>
+            <span style="font-size:0.75rem; color:var(--accent-amber); font-weight:700;">${durMin} min / ${Math.round(g.distGapM)}m</span>
+          </div>
+        `;
+        card.onclick = () => focusOnGap(g);
+        container.appendChild(card);
+      });
+    }
+
+    function focusOnGap(g) {
+      const startRec = records[g.startIdx];
+      map.setView([startRec.lat, startRec.lng], 16);
+    }
+
+    function toggleDrawingTool() {
+      isDrawingMode = !isDrawingMode;
+      const btn = document.getElementById('btnToggleDrawing');
+      const lbl = document.getElementById('lblDrawingBtn');
+
+      if (isDrawingMode) {
+        btn.classList.remove('btn-primary');
+        btn.style.background = 'var(--accent-rose)';
+        lbl.innerText = i18nData[currentLang].stopDrawing || 'Ukončit kreslení';
+        map.getContainer().style.cursor = 'crosshair';
+        map.on('click', onMapClickDraw);
+      } else {
+        btn.classList.add('btn-primary');
+        btn.style.background = '';
+        lbl.innerText = i18nData[currentLang].startDrawing || 'Zapnout kreslicí nástroj';
+        map.getContainer().style.cursor = '';
+        map.off('click', onMapClickDraw);
+      }
+    }
+
+    function onMapClickDraw(e) {
+      if (!drawingPolyline) {
+        drawingPolyline = L.polyline([e.latlng], {
+          color: '#f59e0b',
+          weight: 4,
+          dashArray: '6, 6'
+        }).addTo(map);
+      } else {
+        drawingPolyline.addLatLng(e.latlng);
+      }
+    }
+
+    // --- ACTIVITY STATS RECALCULATION & UI ---
+    function updateActivityStatsUI() {
+      if (records.length === 0) return;
+
+      const totalDist = records[records.length - 1].dist || 0;
+      const totalTimeSec = records[records.length - 1].timestamp - records[0].timestamp;
+
+      // Filter valid moving heart rate values
+      const validHrs = records.filter(r => r.hr && r.hr > 0).map(r => r.hr);
+      const avgHr = validHrs.length > 0 ? Math.round(validHrs.reduce((a, b) => a + b, 0) / validHrs.length) : 0;
+
+      const avgSpeedKmh = totalTimeSec > 0 ? (totalDist / 1000) / (totalTimeSec / 3600) : 0;
+
+      document.getElementById('statDistance').innerText = (totalDist / 1000).toFixed(2) + ' km';
+      document.getElementById('statTime').innerText = formatSeconds(totalTimeSec);
+      document.getElementById('statAvgSpeed').innerText = avgSpeedKmh.toFixed(1) + ' km/h';
+      document.getElementById('statAvgHr').innerText = (avgHr > 0 ? avgHr + ' bpm' : '--');
+    }
+
+    // --- RECONSTRUCTION & EXPORT ENGINE ---
+    function showExportModal() {
+      document.getElementById('exportModal').classList.add('open');
+    }
+
+    function closeExportModal() {
+      document.getElementById('exportModal').classList.remove('open');
+    }
+
+    function buildRepairedFitBinary() {
+      // 1. Clone records and apply Tangles filter
+      let activeTangles = detectedTangles.filter(t => t.active);
+      let filterMask = new Array(records.length).fill(true);
+
+      activeTangles.forEach(t => {
+        for (let k = t.startIdx + 1; k < t.endIdx; k++) {
+          filterMask[k] = false; // Drop inner tangle points
+        }
+      });
+
+      let repairedRecords = [];
+      let currentDistanceOffset = 0;
+
+      for (let i = 0; i < records.length; i++) {
+        if (!filterMask[i]) continue; // skip dropped points
+
+        let r = Object.assign({}, records[i]);
+
+        // Adjust distance value by cumulative tangle cutouts
+        activeTangles.forEach(t => {
+          if (i >= t.endIdx) {
+            const cutDist = records[t.endIdx].dist - records[t.startIdx].dist;
+            currentDistanceOffset += cutDist;
+          }
+        });
+
+        r.dist = Math.max(0, r.dist - currentDistanceOffset);
+        repairedRecords.push(r);
+      }
+
+      // Recalculate summary HR and Cadence exclusively from remaining valid moving points!
+      const validHrs = repairedRecords.filter(r => r.hr && r.hr > 0).map(r => r.hr);
+      const avgHr = validHrs.length > 0 ? Math.round(validHrs.reduce((a, b) => a + b, 0) / validHrs.length) : 0;
+
+      const validCads = repairedRecords.filter(r => r.cadence && r.cadence > 0).map(r => r.cadence);
+      const avgCad = validCads.length > 0 ? Math.round(validCads.reduce((a, b) => a + b, 0) / validCads.length) : 0;
+
+      // 2. Encode to FIT Binary with Header Duplicity Bypass (+1 sec time_created shift)
+      const encodedBuffer = encodeNativeFitBinary(repairedRecords, fileIdHeader, avgHr, avgCad);
+      return encodedBuffer;
+    }
+
+    function encodeNativeFitBinary(repairedRecs, headerInfo, avgHr, avgCad) {
+      // Shift file_id time_created by +1 second to bypass Garmin Connect duplicate check!
+      const shiftedTimeCreated = (headerInfo.timeCreated || Math.round(Date.now()/1000) - GARMIN_EPOCH_OFFSET) + 1;
+
+      // Build FIT Binary Data stream
+      const buffer = new ArrayBuffer(repairedRecs.length * 64 + 1024);
+      const view = new DataView(buffer);
+      const bytes = new Uint8Array(buffer);
+
+      let offset = 14; // Header Size
+
+      // --- Definition Message: Local 0 = file_id (Global 0) ---
+      bytes[offset++] = 0x40; // Def Header, Local 0
+      bytes[offset++] = 0x00; // Reserved
+      bytes[offset++] = 0x00; // Arch Little Endian
+      view.setUint16(offset, 0, true); offset += 2; // Global Msg 0 (file_id)
+      bytes[offset++] = 4; // 4 fields
+
+      // Fields: 0:type(1B), 1:manufacturer(2B), 2:product(2B), 4:time_created(4B)
+      bytes[offset++] = 0; bytes[offset++] = 1; bytes[offset++] = 0x00;
+      bytes[offset++] = 1; bytes[offset++] = 2; bytes[offset++] = 0x84;
+      bytes[offset++] = 2; bytes[offset++] = 2; bytes[offset++] = 0x84;
+      bytes[offset++] = 4; bytes[offset++] = 4; bytes[offset++] = 0x86;
+
+      // Data Message: Local 0 (file_id)
+      bytes[offset++] = 0x00; // Data Header Local 0
+      bytes[offset++] = 4; // activity type
+      view.setUint16(offset, 1, true); offset += 2; // Garmin manufacturer
+      view.setUint16(offset, 1, true); offset += 2; // Product
+      view.setUint32(offset, shiftedTimeCreated, true); offset += 4; // +1s Shifted time_created!
+
+      // --- Definition Message: Local 1 = record (Global 20) ---
+      bytes[offset++] = 0x41; // Def Header, Local 1
+      bytes[offset++] = 0x00;
+      bytes[offset++] = 0x00;
+      view.setUint16(offset, 20, true); offset += 2; // Global Msg 20 (record)
+      bytes[offset++] = 7; // 7 fields
+
+      // Fields: 253:timestamp(4B), 0:lat(4B), 1:lng(4B), 78:alt(4B), 3:hr(1B), 4:cadence(1B), 5:distance(4B)
+      bytes[offset++] = 253; bytes[offset++] = 4; bytes[offset++] = 0x86;
+      bytes[offset++] = 0;   bytes[offset++] = 4; bytes[offset++] = 0x85;
+      bytes[offset++] = 1;   bytes[offset++] = 4; bytes[offset++] = 0x85;
+      bytes[offset++] = 78;  bytes[offset++] = 4; bytes[offset++] = 0x86;
+      bytes[offset++] = 3;   bytes[offset++] = 1; bytes[offset++] = 0x02;
+      bytes[offset++] = 4;   bytes[offset++] = 1; bytes[offset++] = 0x02;
+      bytes[offset++] = 5;   bytes[offset++] = 4; bytes[offset++] = 0x86;
+
+      // Data Messages: Local 1 (records)
+      for (const r of repairedRecs) {
+        bytes[offset++] = 0x01; // Data Header Local 1
+        view.setUint32(offset, r.timestamp, true); offset += 4;
+        view.setInt32(offset, Math.round(r.lat * 2147483648 / 180), true); offset += 4;
+        view.setInt32(offset, Math.round(r.lng * 2147483648 / 180), true); offset += 4;
+        view.setUint32(offset, Math.round(((r.alt || 0) + 500) * 5), true); offset += 4;
+        bytes[offset++] = r.hr || 0;
+        bytes[offset++] = r.cadence || 0;
+        view.setUint32(offset, Math.round((r.dist || 0) * 100), true); offset += 4;
+      }
+
+      // Write FIT 14-byte Header
+      const dataSize = offset - 14;
+      view.setUint8(0, 14); // Header size
+      view.setUint8(1, 0x20); // Protocol ver 2.0
+      view.setUint16(2, 21192, true); // Profile ver
+      view.setUint32(4, dataSize, true); // Data size
+      bytes[8] = 46; bytes[9] = 70; bytes[10] = 73; bytes[11] = 84; // '.FIT'
+      const headerCrc = calcFitCrc(bytes, 0, 12);
+      view.setUint16(12, headerCrc, true);
+
+      // Compute File CRC16
+      const fileCrc = calcFitCrc(bytes, 0, offset);
+      view.setUint16(offset, fileCrc, true);
+      offset += 2;
+
+      return buffer.slice(0, offset);
+    }
+
+    // Garmin FIT CRC16 Lookup Algorithm
+    const fitCrcTable = [
+      0x0000, 0xCC01, 0xD801, 0x1400, 0xF001, 0x3C00, 0x2800, 0xE401,
+      0xA001, 0x6C00, 0x7800, 0xB401, 0x5000, 0x9C01, 0x8801, 0x4400
+    ];
+
+    function calcFitCrc(bytes, start, end) {
+      let crc = 0;
+      for (let i = start; i < end; i++) {
+        let byte = bytes[i];
+        let tmp = fitCrcTable[crc & 0x0F];
+        crc = (crc >> 4) ^ tmp ^ fitCrcTable[byte & 0x0F];
+        tmp = fitCrcTable[crc & 0x0F];
+        crc = (crc >> 4) ^ tmp ^ fitCrcTable[(byte >> 4) & 0x0F];
+      }
+      return crc;
+    }
+
+    // Download Repaired FIT File
+    function downloadFitFile() {
+      const buffer = buildRepairedFitBinary();
+      const blob = new Blob([buffer], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Garmin_Repaired_Activity.fit';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Download GPX File
+    function downloadGpxFile() {
+      let gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Garmin FIT Repair Studio">\n  <trk>\n    <name>Repaired Activity</name>\n    <trkseg>\n`;
+      records.forEach(r => {
+        const dt = new Date((r.timestamp + GARMIN_EPOCH_OFFSET) * 1000).toISOString();
+        gpx += `      <trkpt lat="${r.lat}" lon="${r.lng}"><ele>${r.alt || 0}</ele><time>${dt}</time></trkpt>\n`;
+      });
+      gpx += `    </trkseg>\n  </trk>\n</gpx>`;
+
+      const blob = new Blob([gpx], { type: 'application/gpx+xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Garmin_Repaired_Activity.gpx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Helper Math Functions
+    function calcHaversine(lat1, lon1, lat2, lon2) {
+      const R = 6371000; // Earth radius in meters
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function formatSeconds(secs) {
+      const h = Math.floor(secs / 3600);
+      const m = Math.floor((secs % 3600) / 60);
+      const s = secs % 60;
+      return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    }
+  </script>
+</body>
+</html>

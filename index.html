@@ -1837,6 +1837,9 @@
       let count = 0;
       let n = recs.length;
       let i = 0;
+      const radiusMeters = 30.0;
+      const minDurationSec = 180;
+
       while (i < n - 1) {
         let j = i + 1;
         const centerLat = recs[i].lat;
@@ -1846,7 +1849,7 @@
         while (j < n) {
           const stepDist = calcHaversine(recs[j - 1].lat, recs[j - 1].lng, recs[j].lat, recs[j].lng);
           const dFromCenter = calcHaversine(centerLat, centerLng, recs[j].lat, recs[j].lng);
-          if (dFromCenter > 35.0) break;
+          if (dFromCenter > radiusMeters) break;
           totalPathDist += stepDist;
           j++;
         }
@@ -1854,7 +1857,7 @@
         const dur = recs[j - 1].timestamp - recs[i].timestamp;
         const avgSpdKmh = dur > 0 ? (totalPathDist / 1000.0) / (dur / 3600.0) : 0;
 
-        if (dur >= 180 && avgSpdKmh < 3.2 && totalPathDist >= 45.0 && (j - i) > 5) {
+        if (dur >= minDurationSec && avgSpdKmh < 3.2 && totalPathDist >= (radiusMeters * 1.2) && (j - i) > 5) {
           count++;
           i = j;
         } else {
@@ -2049,11 +2052,17 @@
 
       container.innerHTML = '';
       detectedTangles.forEach(t => {
-        const durationSec = records[t.endIdx].timestamp - records[t.startIdx].timestamp;
-        const distCutM = records[t.endIdx].dist - records[t.startIdx].dist;
+        const recA = records[t.startIdx];
+        const recB = records[t.endIdx];
+
+        const durationSec = recB.timestamp - recA.timestamp;
+        const distCutM = recB.dist - recA.dist;
 
         const durMin = Math.floor(durationSec / 60);
         const durSec = durationSec % 60;
+
+        const timeStrA = recA.timestamp ? formatTimeCET(recA.timestamp) : `--:--:--`;
+        const timeStrB = recB.timestamp ? formatTimeCET(recB.timestamp) : `--:--:--`;
 
         const card = document.createElement('div');
         card.className = `item-card ${t.active ? 'active' : ''}`;
@@ -2065,9 +2074,14 @@
             </div>
             <span style="font-size:0.75rem; color:var(--accent-rose); font-weight:700;">-${durMin}m ${durSec}s</span>
           </div>
-          <div class="item-meta">
-            <span>Body A: ${t.startIdx} &rarr; B: ${t.endIdx}</span>
-            <span>Odmazáno: ${Math.round(distCutM)} m</span>
+          <div class="item-meta" style="flex-direction:column; gap:3px; margin-top:4px;">
+            <div style="font-size:0.76rem; color:#fff; display:flex; justify-content:space-between;">
+              <span><i class="fa-regular fa-clock" style="color:var(--primary); margin-right:4px;"></i><strong>Čas A:</strong> ${timeStrA} &rarr; <strong>Čas B:</strong> ${timeStrB}</span>
+            </div>
+            <div style="font-size:0.73rem; color:var(--text-muted); display:flex; justify-content:space-between; margin-top:2px;">
+              <span>Body A: ${t.startIdx} &rarr; B: ${t.endIdx}</span>
+              <span>Odmazáno: ${Math.round(distCutM)} m</span>
+            </div>
           </div>
         `;
         card.onclick = (e) => {
@@ -2075,6 +2089,11 @@
         };
         container.appendChild(card);
       });
+    }
+
+    function formatTimeCET(garminTimestamp) {
+      const dt = new Date((garminTimestamp + GARMIN_EPOCH_OFFSET) * 1000);
+      return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     }
 
     function toggleTangleActive(id, checked) {
